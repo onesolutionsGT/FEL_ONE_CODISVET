@@ -1,0 +1,328 @@
+CREATE PROCEDURE "FELONE_DIGIFACT_NABN"
+(
+	IN DOCENTRY INTEGER,
+	IN TIPO varchar(5)
+)
+
+LANGUAGE SQLSCRIPT AS
+
+DTEENCA VARCHAR(1000000);
+DTEDETA VARCHAR(1000000);
+DTECOMPLEMENTO VARCHAR(1000000);
+DTEADENDA VARCHAR(1000000);
+RESULT VARCHAR(1000000);
+ENCODIGN VARCHAR(1000000);
+
+BEGIN
+DECLARE i INTEGER;
+DECLARE LINEAS INTEGER;
+DECLARE CodigoMoneda VARCHAR(20);
+DECLARE FechaHoraEmision VARCHAR(50);
+DECLARE AfiliacionIVA VARCHAR(50);
+DECLARE CodigoEstablecimiento VARCHAR(20);
+DECLARE NITEmisor VARCHAR(20);
+DECLARE NombreComercial VARCHAR(150);
+DECLARE NombreEmisor VARCHAR(150);
+DECLARE CorreoEmisor VARCHAR(150);
+DECLARE EDireccion VARCHAR(100);
+DECLARE ECodigoPostal VARCHAR(20);
+DECLARE EMunicipio VARCHAR(100);
+DECLARE EDepartamento VARCHAR(100);
+DECLARE EPais VARCHAR(15);
+DECLARE IDReceptor VARCHAR(15);
+DECLARE NombreReceptor VARCHAR(500);
+DECLARE CorreoReceptor VARCHAR(150);
+DECLARE RDireccion VARCHAR(1000);
+DECLARE RCodigoPostal VARCHAR(20);
+DECLARE RMunicipio VARCHAR(100);
+DECLARE RDepartamento VARCHAR(100);
+DECLARE RPais VARCHAR(15);
+DECLARE RTelefono VARCHAR(100);
+DECLARE DocDscPrcnt numeric(19,6);
+DECLARE FECHANC VARCHAR(500);
+DECLARE MOTIVONC VARCHAR(500);
+DECLARE AUTORIZACIONNC VARCHAR(500);
+DECLARE SERIE VARCHAR(500);
+DECLARE NUMFACTURA VARCHAR(500);
+
+----------------IMPUESTOS-------------------
+DECLARE TINombreCorto VARCHAR(10);
+DECLARE TITotalMontoImpuesto numeric(19,6);
+DECLARE GranTotal numeric(19,6);
+DECLARE BienOServicio VARCHAR(15);
+-----------------TOTALES-------------------
+DECLARE TotalFinal VARCHAR(100);
+DECLARE Ivatotal VARCHAR(100);
+DECLARE DescuentoTotal VARCHAR(100);
+DECLARE Petroleo numeric(19,6);
+
+--VARIABLES DE ADENDA
+DECLARE Adendaid VARCHAR(100);
+DECLARE Validar VARCHAR(100);
+DECLARE Valor1 VARCHAR(200);
+DECLARE Valor2 VARCHAR(200);
+DECLARE Valor3 VARCHAR(200);
+DECLARE Valor4 VARCHAR(200);
+DECLARE Valor5 VARCHAR(200);
+DECLARE Valor6 VARCHAR(200);
+DECLARE Valor7 VARCHAR(500);
+--VARIABLES DE DETALLE
+DECLARE LineNum numeric(19,6);
+DECLARE ItemCode VARCHAR(150);
+DECLARE NumeroLinea VARCHAR(10);
+DECLARE Cantidad numeric(19,6);
+DECLARE UnidadMedida VARCHAR(500);
+DECLARE Descripcion VARCHAR(260);
+DECLARE PrecioUnitario numeric(19,6);
+DECLARE	Precio numeric(19,6);
+DECLARE Descuento VARCHAR(10);
+DECLARE INombreCorto VARCHAR(150);
+DECLARE ICodigoUnidadGravable VARCHAR(500);
+DECLARE IMontoGravable numeric(19,6);
+DECLARE IMontoImpuesto numeric(19,6);
+DECLARE Total numeric(19,6);
+
+--HANA
+		Select DISTINCT
+			CASE t0."DocCur" WHEN 'QTZ' THEN 'GTQ' ELSE 'USD' END AS   "CodigoMoneda" ,
+			TO_VARCHAR("TaxDate", 'YYYY-MM-DD')||'T'|| TO_VARCHAR("DocDate", 'HH:mm:ss') ||'-06:00' AS "FechaHoraEmision" ,
+			:Tipo AS  "Tipo" ,
+			(select "U_VALOR" from "@FEL_PARAMETROS" where "Code" = 'Tafilia') AS "AfiliacionIVA",
+			T1."U_DISPOSITIVO" AS "CodigoEstablecimiento",
+			(select "U_VALOR" from "@FEL_PARAMETROS" where "Code" = 'NitEmi') AS "NITemisor" ,
+			T1."U_NOMBRECOMERCIAL" AS "NombreComercial",
+			(select "U_VALOR" from "@FEL_PARAMETROS" where "Code" = 'Nemi') AS "NombreEmisor" ,
+			(select "U_VALOR" from "@FEL_PARAMETROS" where "Code" = 'Correo') AS "CorreoEmisor" ,
+			to_nvarchar(T1."U_DIR") AS "EDireccion" ,
+			to_nvarchar(T1."U_CODP") AS "ECodigoPostal" ,
+			to_nvarchar(T1."U_MUNI") AS "EMunicipio" ,
+			to_nvarchar(T1."U_DEPTO") AS "EDepartamento" ,
+			to_nvarchar(T1."U_PAIS") AS "EPais" ,			
+			CASE when T0."U_NIT" = 'C/F' then 'CF' when T0."U_NIT" = 'cf' then 'CF' else ifnull(replace(T0."U_NIT",'-',''),'CF') end AS   "IDReceptor" ,						
+			ifnull(replace(T0."U_Nombre",'&','&amp;'),'Consumidor Final') AS   "NombreReceptor" ,
+			ifnull(t3."E_Mail",'') AS   "CorreoReceptor" ,
+			replace(ifnull(CRD1."Address",'CIUDAD'),'&','Y') AS   "RDireccion" ,
+			iFnull(t3."ZipCode",'01002') AS "RCodigoPostal" ,
+			IFNULL(t3."County",'Guatemala') AS "RMunicipio" ,
+			IFNULL(t3."City",'Guatemala') AS   "RDepartamento" ,
+			IFNULL(t3."Country",'GT') AS   "RPais" ,
+			'' AS   "TINombreCorto" ,
+			0 AS   "TITotalMontoImpuesto" ,
+			0 AS   "GranTotal" ,
+			case when t0."DocType" = 'I' then 'B' else 'S' end AS "BienOServicio",						
+			'AdendaSummary' AS   "Adendaid" ,
+			Case t0."U_VALIDAR" when 1 then 'VALIDAR' ELSE 'NO_VALIDAR' END AS "Validar",
+			'' AS   "Valor1",
+			'' AS   "Valor2",
+			'' AS   "Valor3",
+			'' AS   "Valor4",
+			'' AS   "Valor5",
+			'' AS   "Valor6",
+			t0."DiscPrcnt" AS "DESCUENTO_DOC_PRCNT"		
+			INTO CodigoMoneda,
+ FechaHoraEmision,
+ Tipo,
+ AfiliacionIVA,
+ CodigoEstablecimiento,
+ NITemisor,
+ NombreComercial,
+ NombreEmisor,
+ CorreoEmisor,
+ EDireccion,
+ ECodigoPostal,
+ EMunicipio,
+ EDepartamento,
+ EPais,
+ IDReceptor,
+ NombreReceptor,
+ CorreoReceptor,
+ RDireccion,
+ RCodigoPostal,
+ RMunicipio,
+ RDepartamento,
+ RPais,
+ TINombreCorto,
+ TITotalMontoImpuesto,
+ GranTotal,
+ BienOServicio,
+ Adendaid,
+ Validar,
+ Valor1,
+ Valor2,
+ Valor3,
+ Valor4,
+ Valor5,
+ Valor6,
+ DocDscPrcnt
+
+from OINV t0
+left outer join "@FEL_RESOLUCION" T1
+on T1."U_SERIE"=t0."Series"
+left outer join "@FEL_PARAMETROS" T2 on t2."LineId" = 0
+left outer join  OCRD t3
+on t3."CardCode" = t0."CardCode"
+INNER JOIN NNM1 on t0."Series" =NNM1."Series"
+LEFT OUTER JOIN CRD1
+ON t3."CardCode"=CRD1."CardCode"
+left join inv12 t4 on t4."DocEntry" = t0."DocEntry"		
+left JOIN OTER T5 ON T3."Territory"= T5."territryID"
+INNER JOIN OSLP T6 ON T0."SlpCode"= T6."SlpCode"
+INNER JOIN OCTG T7 ON T0."GroupNum"= T7."GroupNum"	
+where t0."DocEntry" = :Docentry;
+
+
+ENCODIGN :='<?xml version="1.0" encoding="UTF-8" standalone="no"?>';
+
+DTEENCA := '<dte:GTDocumento Version="0.1" xmlns:dte="http://www.sat.gob.gt/dte/fel/0.2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">';
+DTEENCA := DTEENCA || '<dte:SAT ClaseDocumento="dte">';
+DTEENCA := DTEENCA || '<dte:DTE ID="DatosCertificados">';
+DTEENCA := DTEENCA || '<dte:DatosEmision ID="DatosEmision">';
+DTEENCA := DTEENCA || '<dte:DatosGenerales CodigoMoneda="'|| CodigoMoneda || '" FechaHoraEmision="'|| FechaHoraEmision || '" Tipo="'|| Tipo || '"></dte:DatosGenerales>';
+DTEENCA := DTEENCA || '<dte:Emisor AfiliacionIVA="'|| AfiliacionIVA || '" CodigoEstablecimiento="'|| CodigoEstablecimiento || '" CorreoEmisor="'|| CorreoEmisor || '" NITEmisor="'|| NITEmisor || '" NombreComercial="'|| NombreComercial || '" NombreEmisor="'|| NombreEmisor || '">';
+DTEENCA := DTEENCA || '<dte:DireccionEmisor>';
+DTEENCA := DTEENCA || '<dte:Direccion>'|| EDireccion || '</dte:Direccion>';
+DTEENCA := DTEENCA || '<dte:CodigoPostal>'|| ECodigoPostal || '</dte:CodigoPostal>';
+DTEENCA := DTEENCA || '<dte:Municipio>'|| EMunicipio || '</dte:Municipio>';
+DTEENCA := DTEENCA || '<dte:Departamento>'|| EDepartamento || '</dte:Departamento>';
+DTEENCA := DTEENCA || '<dte:Pais>'|| EPais || '</dte:Pais>';
+DTEENCA := DTEENCA || '</dte:DireccionEmisor>';
+DTEENCA := DTEENCA || '</dte:Emisor>';
+DTEENCA := DTEENCA || '<dte:Receptor IDReceptor="'|| IDReceptor || '" NombreReceptor="'|| NombreReceptor || '" CorreoReceptor="'|| CorreoReceptor || '">';
+DTEENCA := DTEENCA || '<dte:DireccionReceptor>';
+DTEENCA := DTEENCA || '<dte:Direccion>'|| RDireccion || '</dte:Direccion>';
+DTEENCA := DTEENCA || '<dte:CodigoPostal>'|| RCodigoPostal || '</dte:CodigoPostal>';
+DTEENCA := DTEENCA || '<dte:Municipio>'|| RMunicipio || '</dte:Municipio>';
+DTEENCA := DTEENCA || '<dte:Departamento>'|| RDepartamento || '</dte:Departamento>';
+DTEENCA := DTEENCA || '<dte:Pais>'|| RPais || '</dte:Pais>';
+DTEENCA := DTEENCA || '</dte:DireccionReceptor>';
+DTEENCA := DTEENCA || '</dte:Receptor>';
+
+--FRASES--------------------
+
+DocDscPrcnt := DocDscPrcnt/100;
+SELECT count(A."VisOrder") INTO LINEAS
+	FROM inv1 A
+	WHERE A."DocEntry" = :Docentry;
+
+i := 0;
+NumeroLinea := 1;
+Ivatotal := 0;
+TotalFinal := 0;
+DTEDETA := '<dte:Items>';
+WHILE :i < :LINEAS DO
+
+select
+a."LineNum" As "LineNum",
+ifnull(a."ItemCode", 'SERV001') As "ItemCode",
+CASE WHEN (CASE WHEN a."Quantity" <= 0 then 1 else   a."Quantity" end) < 0 then 1 else  (CASE WHEN a."Quantity" <= 0 then 1 else a."Quantity" end) end "Cantidad" ,
+'UND' "UnidadMedida" ,
+replace(ifnull(a."Dscription",''),'&','&amp;') As "Descripcion",
+CASE WHEN a."TaxCode" = 'EXE' then case when a."Currency" = 'USD' then (("TotalFrgn") / (CASE WHEN a."Quantity" <= 0 then 1 else   a."Quantity" end)) else ((a."GPBefDisc") / (CASE WHEN a."Quantity" <= 0 then 1 else   a."Quantity" end)) end else case when a."Currency" = 'USD' then ((a."GPBefDisc") / (CASE WHEN a."Quantity" <= 0 then 1 else   a."Quantity" end)) else a."GPBefDisc" end end as "PrecioUnitario", 
+CASE WHEN a."TaxCode" = 'EXE' then case when a."Currency" = 'USD' then ("TotalFrgn") else (a."GPBefDisc") end else case when a."Currency" = 'USD' then ("TotalFrgn" + a."VatSumFrgn") else (a."GPBefDisc")* a."Quantity" end end as "Precio" ,
+CASE WHEN a."Currency" = 'USD' then '0' else ((a."GPBefDisc" * a."Quantity") - a."GTotal") + (a."GTotal"  * DocDscPrcnt) end "Descuento",
+'IVA' "INombreCorto",
+case when "TaxCode" = 'IVA' then 1 else 2 end as "ICodigoUnidadGravable" ,
+CASE WHEN "TaxCode" = 'EXE' then case when "Currency" = 'USD' then "TotalFrgn" else ("GPBefDisc"-("GPBefDisc" - "PriceAfVAT") + ("PriceAfVAT" * DocDscPrcnt)) end else case when "Currency" = 'USD' then (("TotalFrgn" + "VatSumFrgn") - round("TotalFrgn" *0.12,2)) else a."LineTotal" * DocDscPrcnt end end as "IMontoGravable" ,
+CASE WHEN "TaxCode" = 'EXE' then 0 else case when "Currency" = 'USD' then round("TotalFrgn" *0.12,2) else a."VatSum" end end as "IMontoImpuesto" ,
+CASE WHEN "TaxCode" = 'EXE' then case when "Currency" = 'USD' then "TotalFrgn"  else "LineTotal"  end else case when "Currency" = 'USD' then "TotalFrgn" + "VatSumFrgn" else (a."LineTotal" * DocDscPrcnt) + a."VatSum" end end as "Total"
+
+into
+LineNum,
+ItemCode,
+Cantidad,
+UnidadMedida,
+Descripcion,
+PrecioUnitario,
+Precio,
+Descuento,
+INombreCorto,
+ICodigoUnidadGravable,
+IMontoGravable,
+IMontoImpuesto,
+Total
+FROM INV1 A
+	left JOIN OITM B
+	ON A."ItemCode" = B."ItemCode"
+	and A."ItemCode" NOT IN ('1000')
+	INNER JOIN OINV C
+	ON A."DocEntry"= C."DocEntry"
+	WHERE A."DocEntry" = :Docentry AND A."VisOrder" = i
+	group by a."ItemCode",a."LineTotal",a."VatSum",a."Currency",a."TotalFrgn",a."VatSumFrgn",a."Quantity",a."Dscription",a."TaxCode",a."PriceBefDi","INMPrice", a."DiscPrcnt", a."GPBefDisc",a."PriceAfVAT",a."GTotal",a."LineNum";
+
+DTEDETA := DTEDETA || '<dte:Item BienOServicio="' || BienOServicio || '" NumeroLinea="' || NumeroLinea || '">';
+DTEDETA := DTEDETA || '<dte:Cantidad>' || TO_VARCHAR(Cantidad) || '</dte:Cantidad>';
+DTEDETA := DTEDETA || '<dte:UnidadMedida>' || UnidadMedida || '</dte:UnidadMedida>';
+DTEDETA := DTEDETA || '<dte:Descripcion>' || Descripcion || '</dte:Descripcion>';
+DTEDETA := DTEDETA || '<dte:PrecioUnitario>' || TO_VARCHAR(PrecioUnitario) || '</dte:PrecioUnitario>';
+DTEDETA := DTEDETA || '<dte:Precio>' || TO_VARCHAR(Precio) || '</dte:Precio>';
+DTEDETA := DTEDETA || '<dte:Descuento>' ||  TO_VARCHAR(Descuento) || '</dte:Descuento>';
+DTEDETA := DTEDETA || '<dte:Impuestos>';
+DTEDETA := DTEDETA || '<dte:Impuesto>';
+DTEDETA := DTEDETA || '<dte:NombreCorto>' || INombreCorto || '</dte:NombreCorto>';
+DTEDETA := DTEDETA || '<dte:CodigoUnidadGravable>' || ICodigoUnidadGravable || '</dte:CodigoUnidadGravable>';
+DTEDETA := DTEDETA || '<dte:MontoGravable>' || TO_VARCHAR(IMontoGravable) || '</dte:MontoGravable>';
+DTEDETA := DTEDETA || '<dte:MontoImpuesto>' || TO_VARCHAR(IMontoImpuesto) || '</dte:MontoImpuesto>';
+DTEDETA := DTEDETA || '</dte:Impuesto>';
+DTEDETA := DTEDETA || '</dte:Impuestos>';
+DTEDETA := DTEDETA || '<dte:Total>' || TO_VARCHAR(Total) || '</dte:Total>';
+DTEDETA := DTEDETA || '</dte:Item>';
+
+
+NumeroLinea := NumeroLinea + 1;
+Ivatotal := Ivatotal + IMontoImpuesto;
+TotalFinal := TotalFinal + Total;
+i := :i+1;
+END WHILE;
+DTEDETA := DTEDETA || '</dte:Items>';
+DTEENCA := DTEENCA || DTEDETA;
+
+DTEENCA := DTEENCA || '<dte:Totales>';
+DTEENCA := DTEENCA || '<dte:TotalImpuestos>';
+DTEENCA := DTEENCA || '<dte:TotalImpuesto NombreCorto="IVA" TotalMontoImpuesto="' || TO_VARCHAR(ivatotal) || '"></dte:TotalImpuesto>';
+DTEENCA := DTEENCA || '</dte:TotalImpuestos>';
+DTEENCA := DTEENCA || '<dte:GranTotal>' ||TO_VARCHAR(round((:TotalFinal),2)) ||'</dte:GranTotal>';
+DTEENCA := DTEENCA || '</dte:Totales>';
+
+---------------------------------------------------------COMPLEMENTOS--------------------------------------------------
+
+
+DTEENCA := DTEENCA || '</dte:DatosEmision>';
+DTEENCA := DTEENCA || '</dte:DTE>';
+
+---------------------------------------------------------ADENDAS-------------------------------------------------------
+
+DTEENCA := DTEENCA || '<dte:Adenda> ';
+DTEENCA := DTEENCA || '<dtecomm:Informacion_COMERCIAL xsi:schemaLocation="https://www.digifact.com.gt/dtecomm" xmlns:dtecomm="https://www.digifact.com.gt/dtecomm">';
+DTEENCA := DTEENCA || '<dtecomm:InformacionAdicional Version="2020_06_01">';
+DTEENCA := DTEENCA || '<dtecomm:REFERENCIA_INTERNA>FACT' || TO_VARCHAR(DOCENTRY) || '</dtecomm:REFERENCIA_INTERNA>';
+DTEENCA := DTEENCA || '<dtecomm:FECHA_REFERENCIA>' || TO_VARCHAR(FechaHoraEmision) || '</dtecomm:FECHA_REFERENCIA>';
+DTEENCA := DTEENCA || '<dtecomm:VALIDAR_REFERENCIA_INTERNA>' || validar ||'</dtecomm:VALIDAR_REFERENCIA_INTERNA>';
+DTEENCA := DTEENCA || '<dtecomm:INFORMACION_ADICIONAL>';
+DTEENCA := DTEENCA || '<dtecomm:Detalle Data="CODUSUARIO" Value="' || Valor2 || '" />';
+DTEENCA := DTEENCA || '<dtecomm:Detalle Data="SERIE_INTER" Value="' || Valor4 || '" />';
+DTEENCA := DTEENCA || '<dtecomm:Detalle Data="CORRELATIVOINT" Value="' || Valor6 || '" />';
+DTEENCA := DTEENCA || '</dtecomm:INFORMACION_ADICIONAL>';
+--DTEENCA := DTEENCA || '<dtecomm:Detalles_Auxiliares>';
+--DTEENCA := DTEENCA || '<dtecomm:Detalle>';
+--DTEENCA := DTEENCA || '<dtecomm:NumeroLinea>4</dtecomm:NumeroLinea>';
+--DTEENCA := DTEENCA || '<dtecomm:Descripcion_Adicional>CODIGO</dtecomm:Descripcion_Adicional>';
+--DTEENCA := DTEENCA || '<dtecomm:CodigoEAN>02551870000006</dtecomm:CodigoEAN>';
+--DTEENCA := DTEENCA || '<dtecomm:CategoriaAdicional/>';
+--DTEENCA := DTEENCA || '<dtecomm:Textos>';
+--DTEENCA := DTEENCA || '<dtecomm:Texto>VC12URREA</dtecomm:Texto>';
+--DTEENCA := DTEENCA || '</dtecomm:Textos>';
+--DTEENCA := DTEENCA || '</dtecomm:Detalle>    ';
+--DTEENCA := DTEENCA || '</dtecomm:Detalles_Auxiliares>';
+DTEENCA := DTEENCA || '</dtecomm:InformacionAdicional>';
+DTEENCA := DTEENCA || '</dtecomm:Informacion_COMERCIAL>';
+DTEENCA := DTEENCA || '</dte:Adenda>';
+DTEENCA := DTEENCA || '</dte:SAT>';
+DTEENCA := DTEENCA || '</dte:GTDocumento>';
+
+RESULT := ENCODIGN || DTEENCA;
+
+--RESULT := DTEENCA;
+
+SELECT  RESULT FROM DUMMY;
+
+END

@@ -1,0 +1,92 @@
+CREATE PROCEDURE "FELONE_DIGIFACT_ANUL"
+(
+IN DOCENTRY INTEGER,
+IN TIPO varchar(5),
+IN NIT varchar(30)
+)
+
+LANGUAGE SQLSCRIPT AS
+
+DTEENCA VARCHAR(1000000);
+RESULT VARCHAR(1000000);
+ENCODIGN VARCHAR(1000000);
+
+BEGIN
+
+DECLARE U_FIRMA_ELETRONICA VARCHAR(100);
+DECLARE IDReceptor VARCHAR(100);
+DECLARE FechaEmisionDocumentoAnular VARCHAR(100);
+DECLARE FechaHoraAnulacion VARCHAR(100);
+DECLARE U_MOTIVO_NC VARCHAR(100);
+
+
+IF (:Tipo='FACT' OR :Tipo='NDEB' OR :Tipo='FCAM' OR :Tipo='RDON' or :Tipo = 'FEXP') then
+			Select 
+			IFNULL(t0."U_NUMERO_DOCUMENTO_NC",''),	
+			ifnull(replace(T0."U_NIT",'-',''),'CF'),
+			IFNULL(t0."U_FECHA_NC",''),
+			TO_VARCHAR (current_date, 'YYYY-MM-DD')  ||'T'|| current_time ||'-06:00',
+			ifnull(t0."U_MOTIVO_NC",'')
+			into 
+			U_FIRMA_ELETRONICA,
+			IDReceptor,
+			FechaEmisionDocumentoAnular,
+			FechaHoraAnulacion,
+			U_MOTIVO_NC
+			from OINV t0 INNER JOIN OCRD T1 ON T1."CardCode" = T0."CardCode"
+			where t0."DocEntry" =:Docentry;	
+END IF;	
+		
+
+	IF (:Tipo='NCRE' or :Tipo='NABN') THEN
+			Select 
+			IFNULL(t0."U_NUMERO_DOCUMENTO_NC",''),	
+			ifnull(replace(T0."U_NIT",'-',''),'CF'),
+			IFNULL(t0."U_FECHA_NC",''),
+			TO_VARCHAR (current_date, 'YYYY-MM-DD')  ||'T'|| current_time ||'-06:00',
+			ifnull(t0."U_MOTIVO_NC",'')
+			into 
+			U_FIRMA_ELETRONICA,
+			IDReceptor,
+			FechaEmisionDocumentoAnular,
+			FechaHoraAnulacion,
+			U_MOTIVO_NC
+			from ORIN t0 INNER JOIN OCRD T1 ON T1."CardCode" = T0."CardCode"
+			where t0."DocEntry" =:Docentry;
+	end IF;
+
+	IF (:Tipo='FESP') THEN 
+			Select 
+			IFNULL(t0."U_NUMERO_DOCUMENTO_NC",''),	
+			ifnull(replace(T0."U_NIT",'-',''),'CF'),
+			IFNULL(t0."U_FECHA_NC",''),
+			TO_VARCHAR (current_date, 'YYYY-MM-DD')  ||'T'|| current_time ||'-06:00',
+			ifnull(t0."U_MOTIVO_NC",'')
+			into 
+			U_FIRMA_ELETRONICA,
+			IDReceptor,
+			FechaEmisionDocumentoAnular,
+			FechaHoraAnulacion,
+			U_MOTIVO_NC
+			from OPCH t0 INNER JOIN OCRD T1 ON T1."CardCode" = T0."CardCode"
+			where t0."DocEntry" =:Docentry;
+	end IF;
+
+
+ENCODIGN :='<?xml version="1.0" encoding="utf-8"?>';
+
+
+
+DTEENCA :='<dte:GTAnulacionDocumento xmlns:dte="http://www.sat.gob.gt/dte/fel/0.1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Version="0.1">';
+DTEENCA := DTEENCA || '<dte:SAT>';
+DTEENCA := DTEENCA || '<dte:AnulacionDTE ID="DatosCertificados">';
+DTEENCA := DTEENCA || '<dte:DatosGenerales FechaEmisionDocumentoAnular="'|| :FechaEmisionDocumentoAnular ||'" FechaHoraAnulacion="'|| :FechaHoraAnulacion ||'" ID="DatosAnulacion" IDReceptor="'|| :IDReceptor ||'" MotivoAnulacion="'|| :U_MOTIVO_NC ||'" NITEmisor="'|| :NIT ||'" NumeroDocumentoAAnular="'|| :U_FIRMA_ELETRONICA ||'"/>';
+DTEENCA := DTEENCA || '</dte:AnulacionDTE>';
+DTEENCA := DTEENCA || '</dte:SAT>';
+DTEENCA := DTEENCA || '</dte:GTAnulacionDocumento>';
+
+RESULT := ENCODIGN || DTEENCA;
+
+
+SELECT  RESULT FROM DUMMY;
+END;

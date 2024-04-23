@@ -1,0 +1,207 @@
+USE [InteramericanCarRental]
+GO
+
+/****** Object:  StoredProcedure [dbo].[FELONE_DIGIFACT_ENCABEZADO]    Script Date: 16/05/2022 15:39:19 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+
+
+
+
+
+
+
+
+CREATE PROCEDURE [dbo].[FELONE_DIGIFACT_ENCABEZADO] @Docentry int,@Tipo char(9),@CursorENC CURSOR VARYING OUTPUT
+AS
+
+
+	IF @Tipo='FACT' OR @Tipo='NDEB' OR @Tipo='FEXP' OR @Tipo='RDON' OR @Tipo='FCAM'
+	BEGIN
+		SET @CursorENC = CURSOR
+		FORWARD_ONLY STATIC FOR 
+				Select DISTINCT
+			CASE t0.DOCCUR WHEN 'QTZ' THEN 'GTQ' ELSE 'USD' END AS   CodigoMoneda ,
+			--convert(varchar, getdate(), 23)+'T'+convert(varchar, getdate(), 108) +'-06:00' AS   FechaHoraEmision ,
+			convert(varchar, TaxDate, 23)+'T'+convert(varchar, getdate(), 108) +'-06:00' AS   FechaHoraEmision ,
+			@Tipo AS   Tipo ,
+			(select U_valor from [@FEL_PARAMETROS] where code = 'Tafilia')AS   AfiliacionIVA ,
+			T1.U_DISPOSITIVO AS   CodigoEstablecimiento ,
+			(select U_valor from [@FEL_PARAMETROS] where code = 'NitEmi')AS NITemisor ,
+			T1.U_NOMBRECOMERCIAL   NombreComercial ,
+			(select U_valor from [@FEL_PARAMETROS] where code = 'Nemi')AS   NombreEmisor ,
+			(select U_valor from [@FEL_PARAMETROS] where code = 'Correo')AS   CorreoEmisor ,
+			cast(T1.U_DIR as varchar(100)) AS   EDireccion ,
+			convert(varchar,T1.U_CODP) AS   ECodigoPostal ,
+			convert(varchar,T1.U_MUNI) AS   EMunicipio ,
+			convert(varchar,T1.U_DEPTO) AS   EDepartamento ,
+			convert(varchar,T1.U_PAIS) AS   EPais ,
+			
+			CASE 
+			when T0.U_NIT_factura = 'C/F' then 'CF'
+			when T0.U_NIT_factura = 'cf' then 'CF'
+			else isnull(replace(T0.U_NIT_factura,'-',''),'CF')
+			end  AS   IDReceptor ,
+			isnull(REPLACE(T0.U_nombre_factura,'&','&amp;'),'Consumidor Final') AS   NombreReceptor ,
+			--T0.U_nombre_factura  AS   NombreReceptor ,
+			isnull(t0.U_email,'') AS   CorreoReceptor ,
+			--'' AS   CorreoReceptor ,
+			--isnull(CRD1.Address,'CIUDAD') AS   RDireccion ,
+			isnull(t0.U_Direccion_factura,'CIUDAD') AS   RDireccion ,
+			isnull(t3.ZipCode,'01002') AS   RCodigoPostal ,
+			isnull(t3.County,'Guatemala') AS   RMunicipio ,
+			isnull(t3.City,'Guatemala') AS   RDepartamento ,
+			isnull(t3.Country,'GT') AS   RPais ,
+			'' AS   TINombreCorto ,
+			0 AS   TITotalMontoImpuesto ,
+			0 AS   GranTotal ,
+			BienOServicio = case when t0.doctype = 'I' then 'B' else 'S' end,
+			'AdendaSummary' AS   Adendaid ,
+			Case t0.U_validar when 1 then 'VALIDAR' ELSE 'NO_VALIDAR' END AS Validar,
+		    isnull(t0.NumAtCard,'') AS   Valor1 ,
+			isnull(t7.PymntGroup,'') AS   Valor2 ,
+			isnull(t5.descript,'') AS   Valor3 ,
+			isnull(t3.CardCode,'') AS   Valor4 ,
+			isnull(t3.Phone1,'') AS   Valor5 ,
+			isnull(t0.DocNum,'') AS   Valor6 
+			--'' AS   Valor6 
+		from OINV t0 
+			left outer join [@FEL_RESOLUCION] T1
+				on T1.U_SERIE=t0.series
+				left outer join [@FEL_PARAMETROS] T2 on t2.LineId = 0
+				left outer join  OCRD t3
+				on t3.CardCode =t0.CardCode
+				left JOIN NNM1 on t0.Series =NNM1.Series 
+				LEFT OUTER JOIN CRD1 
+				ON t3.CARDCODE=CRD1.CARDCODE
+				left join inv12 t4 on t4.DocEntry = t0.DocEntry
+				left JOIN OTER T5 ON T3.Territory= T5.territryID
+				INNER JOIN OSLP T6 ON T0.SlpCode= T6.SlpCode
+				INNER JOIN OCTG T7 ON T0.GroupNum= T7.GroupNum
+			where t0.DocEntry =@Docentry;
+	
+END
+	IF @Tipo='NCRE'OR @Tipo='NABN'
+	BEGIN
+		SET @CursorENC = CURSOR
+		FORWARD_ONLY STATIC FOR 
+			Select DISTINCT
+			CASE t0.DOCCUR WHEN 'QTZ' THEN 'GTQ' ELSE 'USD' END AS   CodigoMoneda ,
+			--convert(varchar, GETDATE(), 23)+'T'+convert(varchar, getdate(), 108) +'-06:00' AS   FechaHoraEmision ,
+			convert(varchar, TaxDate, 23)+'T'+convert(varchar, getdate(), 108) +'-06:00' AS   FechaHoraEmision ,
+			@Tipo AS   Tipo ,
+			(select U_valor from [@FEL_PARAMETROS] where code = 'Tafilia')AS   AfiliacionIVA ,
+			T1.U_DISPOSITIVO AS   CodigoEstablecimiento ,
+			(select U_valor from [@FEL_PARAMETROS] where code = 'NitEmi')AS NITemisor ,
+			T1.U_NOMBRECOMERCIAL   NombreComercial ,
+			(select U_valor from [@FEL_PARAMETROS] where code = 'Nemi')AS   NombreEmisor ,
+			(select U_valor from [@FEL_PARAMETROS] where code = 'Correo')AS   CorreoEmisor ,
+			cast(T1.U_DIR as varchar(100) ) AS   EDireccion ,
+			convert(varchar,T1.U_CODP) AS   ECodigoPostal ,
+			convert(varchar,T1.U_MUNI) AS   EMunicipio ,
+			convert(varchar,T1.U_DEPTO) AS   EDepartamento ,
+			convert(varchar,T1.U_PAIS) AS   EPais ,
+
+			CASE 
+			when T0.U_NIT_factura = 'C/F' then 'CF'
+			when T0.U_NIT_factura = 'cf' then 'CF'
+			else isnull(replace(T0.U_NIT_factura,'-',''),'CF')
+			end  AS   IDReceptor ,
+			isnull(REPLACE(T0.U_nombre_factura,'&','&amp;'),'Consumidor Final') AS   NombreReceptor ,
+			isnull(t0.U_email,'') AS   CorreoReceptor ,
+			isnull(t0.U_Direccion_factura,'CIUDAD') AS   RDireccion ,
+			isnull(t3.ZipCode,'01002') AS   RCodigoPostal ,
+			isnull(t3.County,'Guatemala') AS   RMunicipio ,
+			isnull(t3.City,'Guatemala') AS   RDepartamento ,
+			isnull(t3.Country,'GT') AS   RPais ,
+			'' AS   TINombreCorto ,
+			0 AS   TITotalMontoImpuesto ,
+			0 AS   GranTotal ,
+			BienOServicio = case when t0.doctype = 'I' then 'B' else 'S' end,
+			'AdendaSummary' AS   Adendaid ,
+			Case t0.U_validar when 1 then 'VALIDAR' ELSE 'NO_VALIDAR' END AS Validar,
+			isnull(t0.NumAtCard,'') AS   Valor1 ,
+			isnull(t7.PymntGroup,'') AS   Valor2 ,
+			isnull(t5.descript,'') AS   Valor3 ,
+			isnull(t3.CardCode,'') AS   Valor4 ,
+			isnull(t3.Phone1,'') AS   Valor5 ,
+			isnull(t0.DocNum,'') AS   Valor6 
+			from ORIN t0 
+			left outer join [@FEL_RESOLUCION] T1
+				on T1.U_SERIE=t0.series
+				left outer join [@FEL_PARAMETROS] T2 on t2.LineId = 0
+				left outer join  OCRD t3
+				on t3.CardCode =t0.CardCode
+				INNER JOIN NNM1 on t0.Series =NNM1.Series 
+				LEFT OUTER JOIN CRD1
+				ON t3.CARDCODE=CRD1.CARDCODE
+				left join RIN12 t4 on t4.DocEntry = t0.DocEntry
+				LEFT JOIN OTER T5 ON T3.Territory= T5.territryID
+				LEFT JOIN OSLP T6 ON T0.SlpCode= T6.SlpCode
+				LEFT JOIN OCTG T7 ON T0.GroupNum= T7.GroupNum
+			where t0.DocEntry =@Docentry;
+END
+
+	IF @Tipo='FESP'
+	BEGIN
+		SET @CursorENC = CURSOR
+		FORWARD_ONLY STATIC FOR 
+			Select DISTINCT
+			CASE t0.DOCCUR WHEN 'QTZ' THEN 'GTQ' ELSE 'USD' END AS   CodigoMoneda ,
+			--convert(varchar, getdate(), 23)+'T'+convert(varchar, getdate(), 108) +'-06:00' AS   FechaHoraEmision,
+			convert(varchar, TaxDate, 23)+'T'+convert(varchar, getdate(), 108) +'-06:00' AS   FechaHoraEmision ,
+			@Tipo AS   Tipo ,
+			(select U_valor from [@FEL_PARAMETROS] where code = 'Tafilia')AS   AfiliacionIVA ,
+			T1.U_DISPOSITIVO AS   CodigoEstablecimiento ,
+			(select U_valor from [@FEL_PARAMETROS] where code = 'NitEmi')AS NITemisor ,
+			T1.U_NOMBRECOMERCIAL   NombreComercial ,
+			(select U_valor from [@FEL_PARAMETROS] where code = 'Nemi')AS   NombreEmisor ,
+			(select U_valor from [@FEL_PARAMETROS] where code = 'Correo')AS   CorreoEmisor ,
+			cast(T1.U_DIR as varchar(100)) AS   EDireccion ,
+			convert(varchar,T1.U_CODP) AS   ECodigoPostal ,
+			convert(varchar,T1.U_MUNI) AS   EMunicipio ,
+			convert(varchar,T1.U_DEPTO) AS   EDepartamento ,
+			convert(varchar,T1.U_PAIS) AS   EPais ,
+			isnull(T3.AddID,'') AS   IDReceptor ,
+			T0.CardName AS   NombreReceptor ,
+			isnull(t0.U_email,'') AS   CorreoReceptor ,
+			isnull(t0.U_Direccion_factura,'CIUDAD') AS   RDireccion ,
+			isnull(t3.ZipCode,'01002') AS   RCodigoPostal ,
+			isnull(t3.County,'Guatemala') AS   RMunicipio ,
+			isnull(t3.City,'Guatemala') AS   RDepartamento ,
+			isnull(t3.Country,'GT') AS   RPais ,
+			'IVA' AS   TINombreCorto ,
+			0 AS   TITotalMontoImpuesto ,
+			0 AS   GranTotal ,
+			BienOServicio = case when t0.doctype = 'I' then 'B' else 'S' end,
+			'AdendaSummary' AS   Adendaid ,
+			Case t0.U_validar when 1 then 'VALIDAR' ELSE 'NO_VALIDAR' END AS Validar,
+		   isnull(t0.NumAtCard,'') AS   Valor1 ,
+			isnull(t7.PymntGroup,'') AS   Valor2 ,
+			isnull(t5.descript,'') AS   Valor3 ,
+			isnull(t3.CardCode,'') AS   Valor4 ,
+			isnull(t3.Phone1,'') AS   Valor5 ,
+			isnull(t0.DocNum,'') AS   Valor6  
+			from OPCH t0 
+			left outer join [@FEL_RESOLUCION] T1
+				on T1.U_SERIE=t0.series
+				left outer join [@FEL_PARAMETROS] T2 on t2.LineId = 0
+				left outer join  OCRD t3
+				on t3.CardCode =t0.CardCode
+				INNER JOIN NNM1 on t0.Series =NNM1.Series 
+				LEFT OUTER JOIN CRD1
+				ON t3.CARDCODE=CRD1.CARDCODE
+				LEFT join PCH12 t4 on t4.DocEntry = t0.DocEntry
+				LEFT JOIN OTER T5 ON T3.Territory= T5.territryID
+				LEFT JOIN OSLP T6 ON T0.SlpCode= T6.SlpCode
+				LEFT JOIN OCTG T7 ON T0.GroupNum= T7.GroupNum
+			where t0.DocEntry =@Docentry;
+END
+OPEN @CursorENC;
+GO
+

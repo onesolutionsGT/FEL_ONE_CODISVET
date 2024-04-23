@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WL5G3N0:definitions xmlns:WL5G3N1="http://www.w3.org/2001/XMLSchema" xmlns:WL5G3N3="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:WL5G3N2="http://dbguatefac/Guatefac.wsdl" name="Guatefac" targetNamespace="http://dbguatefac/Guatefac.wsdl" xmlns:WL5G3N0="http://schemas.xmlsoap.org/wsdl/">
+  <WL5G3N0:types />
+  <WL5G3N0:message name="Guatefac_anulaDocumento">
+    <WL5G3N0:part name="pUsuario" type="WL5G3N1:string" />
+    <WL5G3N0:part name="pPassword" type="WL5G3N1:string" />
+    <WL5G3N0:part name="pNitEmisor" type="WL5G3N1:string" />
+    <WL5G3N0:part name="pSerie" type="WL5G3N1:string" />
+    <WL5G3N0:part name="pPreimpreso" type="WL5G3N1:string" />
+    <WL5G3N0:part name="pNitComprador" type="WL5G3N1:string" />
+    <WL5G3N0:part name="pFechaAnulacion" type="WL5G3N1:string" />
+    <WL5G3N0:part name="pMotivoAnulacion" type="WL5G3N1:string" />
+  </WL5G3N0:message>
+  <WL5G3N0:message name="Guatefac_anulaDocumentoResponse">
+    <WL5G3N0:part name="result" type="WL5G3N1:string" />
+  </WL5G3N0:message>
+  <WL5G3N0:message name="Guatefac_generaDocumento">
+    <WL5G3N0:part name="pUsuario" type="WL5G3N1:string" />
+    <WL5G3N0:part name="pPassword" type="WL5G3N1:string" />
+    <WL5G3N0:part name="pNitEmisor" type="WL5G3N1:string" />
+    <WL5G3N0:part name="pEstablecimiento" type="WL5G3N1:decimal" />
+    <WL5G3N0:part name="pTipoDoc" type="WL5G3N1:decimal" />
+    <WL5G3N0:part name="pIdMaquina" type="WL5G3N1:string" />
+    <WL5G3N0:part name="pTipoRespuesta" type="WL5G3N1:string" />
+    <WL5G3N0:part name="pXml" type="WL5G3N1:string" />
+  </WL5G3N0:message>
+  <WL5G3N0:message name="Guatefac_generaDocumentoResponse">
+    <WL5G3N0:part name="result" type="WL5G3N1:string" />
+  </WL5G3N0:message>
+  <WL5G3N0:portType name="Guatefac">
+    <WL5G3N0:operation name="anulaDocumento" parameterOrder="pUsuario pPassword pNitEmisor pSerie pPreimpreso pNitComprador pFechaAnulacion pMotivoAnulacion">
+      <WL5G3N0:input message="WL5G3N2:Guatefac_anulaDocumento" />
+      <WL5G3N0:output message="WL5G3N2:Guatefac_anulaDocumentoResponse" />
+    </WL5G3N0:operation>
+    <WL5G3N0:operation name="generaDocumento" parameterOrder="pUsuario pPassword pNitEmisor pEstablecimiento pTipoDoc pIdMaquina pTipoRespuesta pXml">
+      <WL5G3N0:input message="WL5G3N2:Guatefac_generaDocumento" />
+      <WL5G3N0:output message="WL5G3N2:Guatefac_generaDocumentoResponse" />
+    </WL5G3N0:operation>
+  </WL5G3N0:portType>
+  <WL5G3N0:binding name="Guatefac" type="WL5G3N2:Guatefac">
+    <WL5G3N3:binding transport="http://schemas.xmlsoap.org/soap/http" style="rpc" />
+    <WL5G3N0:operation name="anulaDocumento">
+      <WL5G3N3:operation soapAction="http://dbguatefac/Guatefac.wsdl/anulaDocumento" />
+      <WL5G3N0:input>
+        <WL5G3N3:body use="literal" namespace="http://dbguatefac/Guatefac.wsdl" parts="pUsuario pPassword pNitEmisor pSerie pPreimpreso pNitComprador pFechaAnulacion pMotivoAnulacion" />
+      </WL5G3N0:input>
+      <WL5G3N0:output>
+        <WL5G3N3:body use="literal" namespace="http://dbguatefac/Guatefac.wsdl" parts="result" />
+      </WL5G3N0:output>
+    </WL5G3N0:operation>
+    <WL5G3N0:operation name="generaDocumento">
+      <WL5G3N3:operation soapAction="http://dbguatefac/Guatefac.wsdl/generaDocumento" />
+      <WL5G3N0:input>
+        <WL5G3N3:body use="literal" namespace="http://dbguatefac/Guatefac.wsdl" parts="pUsuario pPassword pNitEmisor pEstablecimiento pTipoDoc pIdMaquina pTipoRespuesta pXml" />
+      </WL5G3N0:input>
+      <WL5G3N0:output>
+        <WL5G3N3:body use="literal" namespace="http://dbguatefac/Guatefac.wsdl" parts="result" />
+      </WL5G3N0:output>
+    </WL5G3N0:operation>
+  </WL5G3N0:binding>
+  <WL5G3N0:service name="Guatefac">
+    <WL5G3N0:documentation>OSB Service</WL5G3N0:documentation>
+    <WL5G3N0:port name="GuatefacPort" binding="WL5G3N2:Guatefac">
+      <WL5G3N3:address location="https://pdte.guatefacturas.com:443/webservices63/feltestSB/Guatefac" />
+    </WL5G3N0:port>
+  </WL5G3N0:service>
+</WL5G3N0:definitions>

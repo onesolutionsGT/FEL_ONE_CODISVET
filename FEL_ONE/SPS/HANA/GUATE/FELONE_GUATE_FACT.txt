@@ -1,0 +1,444 @@
+CREATE PROCEDURE "FELONE_GUATE_FACT"
+(
+IN DOCENTRY INTEGER,
+IN TIPO varchar(5)
+)
+
+LANGUAGE SQLSCRIPT AS
+
+--VARIABLES-DTE---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+DTEENCA 		VARCHAR(1000000);
+DTEDETA 		VARCHAR(1000000);
+DTETOTA			VARCHAR(1000000);
+DTEFOOT 		VARCHAR(1000000);
+DTECOMP 		VARCHAR(1000000);
+DTEFRAS 		VARCHAR(1000000);
+DTEADEN 		VARCHAR(1000000);
+RESULT 			VARCHAR(1000000);
+ENCODIGN 		VARCHAR(1000000);
+
+BEGIN
+
+--VARIABLES-ENCABEZADO--------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+DECLARE i INTEGER;
+DECLARE LINEAS INTEGER;
+DECLARE NITReceptor VARCHAR(200);
+DECLARE Nombre VARCHAR(500);
+DECLARE Direccion VARCHAR(500);
+DECLARE TipoVenta VARCHAR(500);
+DECLARE DestinoVenta VARCHAR(500);
+DECLARE Fecha VARCHAR(500);
+DECLARE Moneda VARCHAR(500);
+DECLARE Tasa VARCHAR(500);
+DECLARE SerieAdmin VARCHAR(500);
+DECLARE NumeroAdmin VARCHAR(500);
+DECLARE FechaVencimiento VARCHAR(500);
+DECLARE Bruto VARCHAR(500);
+DECLARE Descuento VARCHAR(500);
+DECLARE Exento VARCHAR(500);
+DECLARE Otros VARCHAR(500);
+DECLARE Neto VARCHAR(500);
+DECLARE Isr VARCHAR(500);
+DECLARE Iva VARCHAR(500);
+DECLARE Total VARCHAR(500);
+DECLARE Series VARCHAR(500);
+DECLARE DocNum VARCHAR(500);
+
+--VARIABLES-IMPUESTOS---------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+DECLARE TINombreCorto VARCHAR(10);
+DECLARE TITotalMontoImpuesto NUMERIC(19,6);
+DECLARE GranTotal NUMERIC(19,6);
+DECLARE BienOServicio VARCHAR(15);
+
+--VARIABLES-TOTALES-----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+DECLARE TotalFinal VARCHAR(100);
+DECLARE Ivatotal VARCHAR(100);
+DECLARE Petroleo NUMERIC(19,6);
+
+--VARIABLES-ADENDA------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+DECLARE Adendaid VARCHAR(100);
+DECLARE Valor1 VARCHAR(200);
+DECLARE Valor2 VARCHAR(200);
+DECLARE Valor3 VARCHAR(200);
+DECLARE Valor4 VARCHAR(200);
+DECLARE Valor5 VARCHAR(200);
+DECLARE Valor6 VARCHAR(200);
+DECLARE Valor7 VARCHAR(500);
+
+--VARIABLES-DETALLE-----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+--VARIABLES DE DETALLE
+DECLARE Producto VARCHAR(500);
+DECLARE Descripcion VARCHAR(500);
+DECLARE Medida VARCHAR(500);
+DECLARE Cantidad numeric(19,6);
+DECLARE Precio numeric(19,6);
+DECLARE	PorcDesc numeric(19,6);
+DECLARE ImpBruto numeric(19,6);
+DECLARE ImpDescuento numeric(19,6);
+DECLARE ImpExento numeric(19,6);
+DECLARE ImpOtros numeric(19,6);
+DECLARE ImpNeto numeric(19,6);
+DECLARE ImpIsr numeric(19,6);
+DECLARE ImpIva numeric(19,6);
+DECLARE ImpTotal numeric(19,6);
+DECLARE TipoVentaDet varchar(500);
+DECLARE NumeroLinea integer;
+
+--VARIABLES-COMPLEMENTO-------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+			
+			
+	
+--QUERY-ENCABEZADO------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+		SELECT DISTINCT
+			IFNULL(REPLACE(t3."VatIdUnCmp",'-',''),'CF') 												AS "NITReceptor" ,
+			IFNULL(T0."CardName",'') 																	AS "Nombre" ,
+			IFNULL(IFNULL(t4."StreetB",t4."StreetS"),'') 												AS "Direccion" ,
+			CASE WHEN t0."DocType" = 'I' THEN 'B' ELSE 'S' END 											AS "TipoVenta",
+			IFNULL(to_nvarchar(T1."U_DISPOSITIVO"),'1') 												AS "DestionoVenta",
+			TO_VARCHAR (CURRENT_DATE, 'DD/MM/YYYY') 													AS "Fecha",
+			CASE t0."DocCur" WHEN 'QTZ' THEN '1' ELSE '2' END 											AS "Moneda" ,
+			IFNULL(t0."DocRate",0) 																		AS "Tasa",
+			nn."SeriesName" 																			AS "SerieAdmin",
+			t0."DocNum" 																				AS "NumeroAdmin",
+			IFNULL("DocTotal" ,0) 	 																	AS "Bruto",
+			0 																							AS "Descuento",
+			CASE WHEN "VatSum" = 0 THEN "DocTotal" ELSE 0 END 											AS "Exento",
+			0 																							AS "Otros",
+			"DocTotal"- "VatSum" 																		AS "Neto",
+			0 																							AS "Isr",
+			"VatSum" 																					AS "Iva",
+			"DocTotal" 																					AS "Total",
+			TO_VARCHAR (t0."DocDueDate", 'YYYYMMDD')													AS "DocDueDate",
+			nn."Series" 																				AS "Series",
+			t0."DocNum" 																				As "DocNum"
+		INTO 
+			NITReceptor,
+			Nombre,
+			Direccion,
+			TipoVenta,
+			DestinoVenta,
+			Fecha,
+			Moneda,
+			Tasa,
+			SerieAdmin ,
+			NumeroAdmin,
+			Bruto,
+			Descuento,
+			Exento,
+			Otros,
+			Neto,
+			Isr,
+			Iva,
+			Total,
+			FechaVencimiento,
+			Series,
+			DocNum		
+		FROM OINV t0 
+			LEFT OUTER JOIN "@FEL_RESOLUCION" T1
+			ON T1."U_SERIE"=t0."Series"
+			LEFT OUTER JOIN "@FEL_PARAMETROS" T2 on t2."LineId" = 0
+			LEFT OUTER JOIN  OCRD t3
+			ON t3."CardCode" =t0."CardCode"
+			INNER JOIN NNM1 nn ON t0."Series" = nn."Series" 
+			LEFT JOIN inv12 t4 ON t4."DocEntry" = t0."DocEntry"				
+		WHERE t0."DocEntry" = :Docentry;
+			
+--DETALLE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+	SELECT COUNT(A."VisOrder") INTO LINEAS
+	FROM inv1 A
+	WHERE A."DocEntry" = :Docentry;
+
+	i := 0;
+	NumeroLinea := 1;
+	Ivatotal := 0;
+	TotalFinal := 0;
+	
+	DTEDETA := '</Encabezado>';
+	DTEDETA := DTEDETA || '<Detalles>';
+	
+	WHILE :i < :LINEAS DO
+	
+			SELECT
+			
+--DETALLE-PRODUCTO------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+			IFNULL(a."ItemCode",'Servicio') 																AS "Producto" ,
+
+--DETALLE-DESCRIPCION---------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+			a."Dscription" 																					AS "Descripcion" ,
+
+--DETALLE-MEDIDA--------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+			'1' 																							AS "Medida" ,
+
+--DETALLE-CANTIDAD------------------------------------------------------------------------------------------------------------------------------------------------------------------
+	
+			CASE WHEN a."Quantity" <= 0 THEN 
+				1 
+			ELSE 
+				a."Quantity" 
+			END 																							AS "Cantidad" ,				
+	
+--DETALLE-PRECIO--------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+			CASE WHEN a."TaxCode" = 'EXE' THEN 
+				CASE WHEN a."Currency" = 'USD' THEN 
+					(a."TotalFrgn")/(CASE WHEN a."Quantity" <= 0 THEN 1 ELSE a."Quantity" END)
+				ELSE 
+					("LineTotal")/(CASE WHEN a."Quantity" <= 0 THEN 1 ELSE a."Quantity" END) 
+				END
+			ELSE 
+				CASE WHEN a."Currency" = 'USD' THEN 
+					("TotalFrgn"+ a."VatSumFrgn")/(CASE WHEN a."Quantity" <= 0 THEN 1 ELSE a."Quantity" END) 
+				ELSE 
+					("LineTotal"+ a."VatSum")/(CASE WHEN a."Quantity" <= 0 THEN 1 ELSE a."Quantity" END)
+				END 
+			END 																							AS "Precio" ,
+
+--DETALLE-CANTIDAD------------------------------------------------------------------------------------------------------------------------------------------------------------------
+	
+			0 																								AS "PorcDesc",
+
+--DETALLE-CANTIDAD------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+			CASE WHEN a."TaxCode" = 'EXE' THEN 
+				CASE WHEN a."Currency" = 'USD' THEN 
+					"TotalFrgn" 
+				ELSE 
+					"LineTotal" 
+				END 
+			ELSE 
+				CASE WHEN a."Currency" = 'USD' THEN 
+					("TotalFrgn" + a."VatSumFrgn") - ROUND("TotalFrgn" *0.12,2)
+				ELSE 
+					("LineTotal" + a."VatSum") - ROUND("LineTotal" *0.12,4)
+				END 
+			END 																							AS "ImpBruto" ,
+			
+--DETALLE-CANTIDAD------------------------------------------------------------------------------------------------------------------------------------------------------------------
+			
+			0																								AS "ImpDescuento",
+
+--DETALLE-CANTIDAD------------------------------------------------------------------------------------------------------------------------------------------------------------------
+			
+			0 																								AS "ImpExento",
+
+--DETALLE-CANTIDAD------------------------------------------------------------------------------------------------------------------------------------------------------------------
+			
+			0																								AS "ImpOtros",
+
+--DETALLE-CANTIDAD------------------------------------------------------------------------------------------------------------------------------------------------------------------
+			
+			CASE WHEN a."TaxCode" = 'EXE' THEN 
+				CASE WHEN a."Currency" = 'USD' THEN 
+					"TotalFrgn"  
+				ELSE 
+					"LineTotal"  
+				END 
+			ELSE 
+				CASE WHEN a."Currency" = 'USD' THEN 
+					"TotalFrgn" + a."VatSumFrgn" 
+				ELSE 
+					"LineTotal" + a."VatSum" 
+				END 
+			END 																							AS "ImpNeto",
+
+--DETALLE-CANTIDAD------------------------------------------------------------------------------------------------------------------------------------------------------------------
+			
+			0																								AS "ImpIsr",
+
+--DETALLE-CANTIDAD------------------------------------------------------------------------------------------------------------------------------------------------------------------
+			
+			CASE WHEN a."TaxCode" = 'EXE' THEN 
+				0 
+			ELSE 
+				CASE WHEN a."Currency" = 'USD' THEN 
+					ROUND("TotalFrgn" *0.12,4) 
+				ELSE 
+					ROUND("LineTotal" *0.12,4) 
+				END 
+			END 																							AS "ImpIva" ,
+
+
+--DETALLE-CANTIDAD------------------------------------------------------------------------------------------------------------------------------------------------------------------
+			
+			CASE WHEN a."TaxCode" = 'EXE' THEN 
+				CASE WHEN a."Currency" = 'USD' THEN 
+					"TotalFrgn" 
+				ELSE 
+					"LineTotal"  
+				END 
+			ELSE 
+				CASE WHEN a."Currency" = 'USD' THEN 
+					"TotalFrgn" + a."VatSumFrgn" 
+				ELSE 
+					"LineTotal" + a."VatSum" 
+				END 
+			END 																							AS "ImpTotal",
+							
+--DETALLE-UNIDAD-MEDIDA-------------------------------------------------------------------------------------------------------------------------------------------------------------
+			
+			CASE WHEN c."DocType" = 'I' THEN 
+				'B' 
+			ELSE 
+				'S' 
+			END 																							AS "TipoVentaDet"			
+	
+--INTO------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+		
+		INTO
+			Producto,
+			Descripcion,
+			Medida,
+			Cantidad ,
+			Precio ,
+			PorcDesc ,
+			ImpBruto,
+			ImpDescuento,
+			ImpExento,
+			ImpOtros ,
+			ImpNeto ,
+			ImpIsr ,
+			ImpIva ,
+			ImpTotal ,
+			TipoVentaDet
+	
+--FROM------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+	
+		FROM INV1 A
+			LEFT JOIN OITM B
+			ON A."ItemCode" = B."ItemCode" 
+			AND A."ItemCode" NOT IN ('1000') 
+		INNER JOIN OINV C
+			ON A."DocEntry"=C."DocEntry" 
+		WHERE A."DocEntry" = :Docentry 
+			AND A."VisOrder" = i
+		GROUP BY  
+			a."ItemCode",
+			a."WhsCode",
+			c."DocType",
+			b."ItemCode",
+			a."LineTotal",
+			a."VatSum",
+			a."Currency",
+			a."TotalFrgn",
+			a."VatSumFrgn",
+			a."Quantity",
+			a."Dscription",
+			a."TaxCode",
+			a."PriceBefDi",
+			"INMPrice";
+		
+--XML-DETALLE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+		
+			DTEDETA := DTEDETA || '<Productos>';
+			DTEDETA := DTEDETA || '<Producto>' || Producto || '</Producto>';
+			DTEDETA := DTEDETA || '<Descripcion>' || Descripcion || '</Descripcion>';
+			DTEDETA := DTEDETA || '<Medida>' || Medida || '</Medida>';
+			DTEDETA := DTEDETA || '<Cantidad>' || to_varchar(Cantidad) || '</Cantidad>';
+			DTEDETA := DTEDETA || '<Precio>' || to_varchar(Precio) || '</Precio>';
+			DTEDETA := DTEDETA || '<PorcDesc>' || to_varchar(PorcDesc) || '</PorcDesc>';
+			DTEDETA := DTEDETA || '<ImpBruto>' || to_varchar(Precio*Cantidad) || '</ImpBruto>';
+			DTEDETA := DTEDETA || '<ImpDescuento>' || to_varchar(ImpDescuento) || '</ImpDescuento>';
+			DTEDETA := DTEDETA || '<ImpExento>' || to_varchar(ImpExento) || '</ImpExento>';
+			DTEDETA := DTEDETA || '<ImpOtros>' || to_varchar(ImpOtros) || '</ImpOtros>';
+			DTEDETA := DTEDETA || '<ImpNeto>' || to_varchar(ImpNeto-ImpIva) || '</ImpNeto>';
+			DTEDETA := DTEDETA || '<ImpIsr>' || to_varchar(ImpIsr) || '</ImpIsr>';
+			DTEDETA := DTEDETA || '<ImpIva>' || to_varchar(ImpIva) || '</ImpIva>';
+			DTEDETA := DTEDETA || '<ImpTotal>' || to_varchar(ImpTotal) || '</ImpTotal>';
+			DTEDETA := DTEDETA || '<TipoVentaDet>' || TipoVentaDet || '</TipoVentaDet>';
+			DTEDETA := DTEDETA || '</Productos>';
+			
+		NumeroLinea := NumeroLinea + 1;
+		Ivatotal := Ivatotal + ImpIva;
+		TotalFinal := TotalFinal + ImpTotal;
+		i := :i+1;
+		
+	END WHILE;
+
+		DTEDETA := DTEDETA || '</Detalles>';
+		
+--QUERY-COMPLEMENTO-----------------------------------------------------------------------------------------------------------------------------------------------------------------
+	
+	
+	
+--XML-ENCABEZADO--------------------------------------------------------------------------------------------------------------------------------------------------------------------
+			
+		DTEENCA := '<DocElectronico>';
+		DTEENCA := DTEENCA || '<Encabezado>';
+		DTEENCA := DTEENCA || '<Receptor>';
+		DTEENCA := DTEENCA || '<NITReceptor>' || NITReceptor || '</NITReceptor>';
+		DTEENCA := DTEENCA || '<Nombre>' || Nombre || '</Nombre>';
+		DTEENCA := DTEENCA || '<Direccion>' || Direccion || '</Direccion>';
+		DTEENCA := DTEENCA || '</Receptor>';        
+		DTEENCA := DTEENCA || '<InfoDoc>';
+		DTEENCA := DTEENCA || '<TipoVenta>' || TipoVenta || '</TipoVenta>';
+		DTEENCA := DTEENCA || '<DestinoVenta>' || DestinoVenta || '</DestinoVenta>';
+		DTEENCA := DTEENCA || '<Fecha>' || Fecha || '</Fecha>';
+		DTEENCA := DTEENCA || '<Moneda>' || Moneda || '</Moneda>';
+		DTEENCA := DTEENCA || '<Tasa>' || to_varchar(Tasa) || '</Tasa>';
+		DTEENCA := DTEENCA || '<Referencia>' || TIPO || '_' || Series || '_' ||  to_varchar(DOCENTRY) || '_' || DocNum || '</Referencia>';
+		DTEENCA := DTEENCA || '<NumeroAcceso></NumeroAcceso>';
+		DTEENCA := DTEENCA || '<SerieAdmin>' || to_varchar(SerieAdmin) || '</SerieAdmin>';
+		DTEENCA := DTEENCA || '<NumeroAdmin>' || to_varchar(NumeroAdmin) || '</NumeroAdmin>';
+		DTEENCA := DTEENCA || '</InfoDoc>';
+		
+--XML-FRASES------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+		DTEFRAS := '';
+
+--XML-TOTALES-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+			
+		DTETOTA := '<Totales>';
+		DTETOTA := DTETOTA || '<Bruto>' || to_varchar(Bruto) || '</Bruto>';
+		DTETOTA := DTETOTA || '<Descuento>' || to_varchar(Descuento) || '</Descuento>';
+		DTETOTA := DTETOTA || '<Exento>' || to_varchar(Exento) || '</Exento>';
+		DTETOTA := DTETOTA || '<Otros>' || to_varchar(Otros) || '</Otros>';
+		DTETOTA := DTETOTA || '<Neto>' || to_varchar(Neto) || '</Neto>';
+		DTETOTA := DTETOTA || '<Isr>' || to_varchar(Isr) || '</Isr>';
+		DTETOTA := DTETOTA || '<Iva>' || to_varchar(Iva) || '</Iva>';
+		DTETOTA := DTETOTA || '<Total>' || to_varchar(Total) || '</Total>';
+		DTETOTA := DTETOTA || '</Totales>';
+		DTETOTA := DTETOTA || '<DatosAdicionales></DatosAdicionales>';
+		
+--XML-FOOTER------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+		
+		DTEFOOT := '</DocElectronico>';
+		
+--XML-COMPLEMENTO-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+		DTECOMP := '';
+		
+--XML-ADENDAS-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+		
+		DTEADEN := '';
+		
+--XML-ENCODING----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+		
+		ENCODIGN :='<?xml version="1.0" encoding="UTF-8" standalone="no"?>';
+		
+--XML-UNION-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+			
+		RESULT := ENCODIGN || DTEENCA || DTEFRAS || DTETOTA || DTECOMP || DTEDETA || DTEFOOT || DTEADEN;
+
+--XML-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+		SELECT RESULT FROM DUMMY;
+
+------------------------------------------------------------------------FELONE------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------STANDAR-----------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------VERSION-----------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------GUATEFACTURAS--------------------------------------------------------------------------------------------------
+
+END;

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<definitions xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:tns="FEL" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:wsdlns="FEL" xmlns:tns1="FEL" name="Documento" targetNamespace="FEL" xmlns="http://schemas.xmlsoap.org/wsdl/">
+  <types>
+    <xsd:schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" elementFormDefault="qualified" targetNamespace="FEL">
+      <xsd:element name="Documento.Execute">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element minOccurs="1" maxOccurs="1" name="Cliente" type="xsd:string" />
+            <xsd:element minOccurs="1" maxOccurs="1" name="Usuario" type="xsd:string" />
+            <xsd:element minOccurs="1" maxOccurs="1" name="Clave" type="xsd:string" />
+            <xsd:element minOccurs="1" maxOccurs="1" name="Nitemisor" type="xsd:string" />
+            <xsd:element minOccurs="1" maxOccurs="1" name="Xmldoc" type="xsd:string" />
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="Documento.ExecuteResponse">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element minOccurs="1" maxOccurs="1" name="Respuesta" type="xsd:string" />
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+    </xsd:schema>
+  </types>
+  <message name="Documento.ExecuteSoapIn">
+    <part name="parameters" element="tns1:Documento.Execute" />
+  </message>
+  <message name="Documento.ExecuteSoapOut">
+    <part name="parameters" element="tns1:Documento.ExecuteResponse" />
+  </message>
+  <portType name="DocumentoSoapPort">
+    <operation name="Execute">
+      <input message="tns1:Documento.ExecuteSoapIn" />
+      <output message="tns1:Documento.ExecuteSoapOut" />
+    </operation>
+  </portType>
+  <binding name="DocumentoSoapBinding" type="tns1:DocumentoSoapPort">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <operation name="Execute">
+      <soap:operation soapAction="FELaction/ADOCUMENTO.Execute" />
+      <input>
+        <soap:body use="literal" />
+      </input>
+      <output>
+        <soap:body use="literal" />
+      </output>
+    </operation>
+  </binding>
+  <service name="Documento">
+    <port name="DocumentoSoapPort" binding="tns1:DocumentoSoapBinding">
+      <soap:address location="http://pruebas.ecofactura.com.gt:8080/fel/adocumento" />
+    </port>
+  </service>
+</definitions>

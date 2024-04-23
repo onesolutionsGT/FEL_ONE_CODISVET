@@ -1,0 +1,24 @@
+CREATE PROCEDURE FELONE_LLENAGRID
+LANGUAGE SQLSCRIPT
+AS
+
+BEGIN
+select  
+a."Series",
+                     a."SeriesName",
+                     Case "ObjectCode" WHEN 13 THEN CASE "DocSubType" WHEN 'DN' THEN 'Nota de Debito' ELSE 'Factura' END ELSE CASE "ObjectCode" WHEN 14 THEN 'Nota de Credito' ELSE 'Factura Proveedor' end End "Tipo Serie",
+                     Case iFnull(b."U_SERIE", '100') WHEN '100' THEN '0' ELSE 'Y' End AS "Es documento electrónico",
+					 b."U_TIPO_DOC" "Tipo Documento",
+					 Case iFnull(b."U_ES_BATCH", '0') WHEN '0' THEN '0' ELSE 'Y' End AS "Es batch",
+					 b."U_DISPOSITIVO" "Dispositivo",
+                     b."U_DIR" "Direccion",
+					 b."U_MUNI" "Municipio", 
+					 b."U_DEPTO" "Departamento",
+					 B."U_PAIS" "Pais",
+					 B."U_CODP" "Codigo Postal",
+					 B."U_NOMBRECOMERCIAL" "Nombre Comercial"
+                     from NNM1 a left outer join "@FEL_RESOLUCION" b
+                     on  a."Series" =b."U_SERIE" 
+                      where a."ObjectCode" in ('13','14','18') 
+                      order by a."ObjectCode",a."DocSubType" ; 
+END;

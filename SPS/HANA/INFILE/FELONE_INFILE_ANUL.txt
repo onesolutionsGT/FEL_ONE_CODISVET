@@ -1,0 +1,126 @@
+CREATE PROCEDURE "FELONE_INFILE_ANUL"
+(
+IN DOCENTRY INTEGER,
+IN TIPO varchar(5),
+IN NIT varchar(30)
+)
+
+LANGUAGE SQLSCRIPT AS
+
+--VARIABLES-DTE---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+DTEENCA VARCHAR(1000000);
+RESULT VARCHAR(1000000);
+ENCODIGN VARCHAR(1000000);
+
+BEGIN
+
+--VARIABLES-ENCABEZADO--------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+DECLARE U_FIRMA_ELETRONICA VARCHAR(100);
+DECLARE IDReceptor VARCHAR(100);
+DECLARE FechaEmisionDocumentoAnular VARCHAR(100);
+DECLARE FechaHoraAnulacion VARCHAR(100);
+DECLARE U_MOTIVO_NC VARCHAR(100);
+
+--QUERY-OINV-ENCABEZADO-------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+	IF (:Tipo='FACT' OR :Tipo='NDEB' OR :Tipo='FCAM' OR :Tipo='RDON' or :Tipo = 'FEXP') then
+	
+		SELECT 
+			IFNULL(t0."U_NUMERO_DOCUMENTO_NC",''),	
+			IFNULL(REPLACE(T0."U_NIT",'-',''),'CF'),
+			IFNULL(t0."U_FECHA_NC",''),
+			TO_VARCHAR (CURRENT_DATE, 'YYYY-MM-DD')  ||'T'|| CURRENT_TIME ||'-06:00',
+			IFNULL(t0."U_MOTIVO_NC",'')
+		INTO 
+			U_FIRMA_ELETRONICA,
+			IDReceptor,
+			FechaEmisionDocumentoAnular,
+			FechaHoraAnulacion,
+			U_MOTIVO_NC
+		FROM OINV t0 
+			INNER JOIN OCRD T1 
+			ON T1."CardCode" = T0."CardCode"
+		WHERE t0."DocEntry" =:Docentry;	
+		
+	END IF;	
+	
+--QUERY-ORIN-ENCABEZADO-------------------------------------------------------------------------------------------------------------------------------------------------------------	
+
+	IF (:Tipo='NCRE' or :Tipo='NABN') THEN
+	
+		SELECT 
+			IFNULL(t0."U_NUMERO_DOCUMENTO_NC",''),	
+			IFNULL(REPLACE(T0."U_NIT",'-',''),'CF'),
+			IFNULL(t0."U_FECHA_NC",''),
+			TO_VARCHAR (CURRENT_DATE, 'YYYY-MM-DD')  ||'T'|| CURRENT_TIME ||'-06:00',
+			IFNULL(t0."U_MOTIVO_NC",'')
+		INTO 
+			U_FIRMA_ELETRONICA,
+			IDReceptor,
+			FechaEmisionDocumentoAnular,
+			FechaHoraAnulacion,
+			U_MOTIVO_NC
+		FROM ORIN t0 
+			INNER JOIN OCRD T1 
+			ON T1."CardCode" = T0."CardCode"
+		WHERE t0."DocEntry" =:Docentry;	
+		
+	end IF;
+
+--QUERY-OPCH-ENCABEZADO-------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+	IF (:Tipo='FESP') THEN 
+	
+		SELECT 
+			IFNULL(t0."U_NUMERO_DOCUMENTO_NC",''),	
+			IFNULL(REPLACE(T0."U_NIT",'-',''),'CF'),
+			IFNULL(t0."U_FECHA_NC",''),
+			TO_VARCHAR (CURRENT_DATE, 'YYYY-MM-DD')  ||'T'|| CURRENT_TIME ||'-06:00',
+			IFNULL(t0."U_MOTIVO_NC",'')
+		INTO 
+			U_FIRMA_ELETRONICA,
+			IDReceptor,
+			FechaEmisionDocumentoAnular,
+			FechaHoraAnulacion,
+			U_MOTIVO_NC
+		FROM OPCH t0 
+			INNER JOIN OCRD T1 
+			ON T1."CardCode" = T0."CardCode"
+		WHERE t0."DocEntry" =:Docentry;	
+
+	END IF;
+
+
+--XML-ENCABZADO---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+	DTEENCA :='<dte:GTAnulacionDocumento xmlns:dte="http://www.sat.gob.gt/dte/fel/0.1.0" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" ';
+	DTEENCA := DTEENCA || 'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sat.gob.gt/dte/fel/0.1.0 ';
+	DTEENCA := DTEENCA || 'https://fel.g4sdocumenta.com/esquemas/GT_AnulacionDocumento-0.1.0.xsd" Version="0.1">';
+	DTEENCA := DTEENCA || '<dte:SAT>';
+	DTEENCA := DTEENCA || '<dte:AnulacionDTE ID="DatosCertificados">';
+	DTEENCA := DTEENCA || '<dte:DatosGenerales FechaEmisionDocumentoAnular="'||:FechaEmisionDocumentoAnular||'" FechaHoraAnulacion="'||:FechaHoraAnulacion||'" ID="DatosAnulacion"';
+	DTEENCA := DTEENCA || ' IDReceptor="'||:IDReceptor||'" MotivoAnulacion="'||:U_MOTIVO_NC||'" NITEmisor="'||:NIT||'" NumeroDocumentoAAnular="'||:U_FIRMA_ELETRONICA||'"/>';
+	DTEENCA := DTEENCA || '</dte:AnulacionDTE>';
+	DTEENCA := DTEENCA || '</dte:SAT>';
+	DTEENCA := DTEENCA || '</dte:GTAnulacionDocumento>';
+
+--XML-ENCODING----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+	ENCODIGN :='<?xml version="1.0" encoding="UTF-8" standalone="no"?>';
+
+--XML-UNION-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+	RESULT := ENCODIGN || DTEENCA;
+
+--XML-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+	SELECT  RESULT FROM DUMMY;
+	
+------------------------------------------------------------------------FELONE------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------STANDAR-----------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------VERSION-----------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------INFILE------------------------------------------------------------------------------------------------------
+	
+END;

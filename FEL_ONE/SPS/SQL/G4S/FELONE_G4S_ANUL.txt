@@ -1,0 +1,81 @@
+USE [InteramericanCarRental]
+GO
+
+/****** Object:  StoredProcedure [dbo].[FELONE_G4S_ANUL]    Script Date: 16/05/2022 15:37:11 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+CREATE PROCEDURE [dbo].[FELONE_G4S_ANUL] (@DOCENTRY INT,@TIPO char(9), @NIT Varchar(30))
+AS
+
+DECLARE @DTEENCA VARCHAR(MAX)
+DECLARE @RESULT AS VARCHAR(MAX)
+
+--VARIABLES DE ENCABEZADO
+DECLARE @U_FIRMA_ELETRONICA VARCHAR(50)
+DECLARE @IDReceptor VARCHAR(50)
+DECLARE @FechaEmisionDocumentoAnular VARCHAR(50)
+DECLARE @FechaHoraAnulacion VARCHAR(50)
+DECLARE @U_MOTIVO_NC VARCHAR(50)
+
+
+--CURSORES
+IF @Tipo='FACT' OR @Tipo='NDEB' OR @Tipo='FCAM' OR @Tipo='RDON' OR @Tipo='FEXP'
+	BEGIN
+			Select 
+			@U_FIRMA_ELETRONICA = isnull(t0.U_NUMERO_DOCUMENTO_NC,''),
+			@IDReceptor = isnull(replace(T3.U_NIT,'-',''),'CF'),
+			@FechaEmisionDocumentoAnular = isnull(t0.U_FECHA_NC,''),
+			@FechaHoraAnulacion = left(convert(varchar(30),getdate(),126),19)+'-06:00',
+			@U_MOTIVO_NC = isnull(t0.U_MOTIVO_NC,'')
+			from OINV t0 
+			left outer join  OCRD t3
+				on t3.CardCode =t0.CardCode
+			where t0.DocEntry =@Docentry;
+END
+	IF @Tipo='NCRE' or @Tipo='NABN'
+	begin
+			Select 
+			@U_FIRMA_ELETRONICA = isnull(t0.U_NUMERO_DOCUMENTO_NC,''),
+			@IDReceptor = isnull(replace(T3.AddID,'-',''),'CF'),
+			@FechaEmisionDocumentoAnular = isnull(t0.U_FECHA_NC,''),
+			@FechaHoraAnulacion = left(convert(varchar(30),getdate(),126),19)+'-06:00',
+			@U_MOTIVO_NC = isnull(t0.U_MOTIVO_NC,'')
+			from ORIN t0 
+			left outer join  OCRD t3
+				on t3.CardCode =t0.CardCode
+			where t0.DocEntry =@Docentry;
+	end
+
+	IF @Tipo='FESP' 
+	begin
+			Select 
+			@U_FIRMA_ELETRONICA = isnull(t0.U_NUMERO_DOCUMENTO_NC,''),
+			@IDReceptor = isnull(replace(T3.AddID,'-',''),'CF'),
+			@FechaEmisionDocumentoAnular = isnull(t0.U_FECHA_NC,''),
+			@FechaHoraAnulacion = left(convert(varchar(30),getdate(),126),19)+'-06:00',
+			@U_MOTIVO_NC = isnull(t0.U_MOTIVO_NC,'')
+			from opch t0 
+			INNER join ocrd t3 on t3.CardCode = t0.CardCode
+			where t0.DocEntry =@Docentry;
+	end
+
+--ENCABEZADO
+SET @DTEENCA='<?xml version="1.0" encoding="UTF-8" standalone="no"?>'
+SET @DTEENCA=@DTEENCA+'<dte:GTAnulacionDocumento xmlns:dte="http://www.sat.gob.gt/dte/fel/0.1.0" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sat.gob.gt/dte/fel/0.1.0 https://fel.g4sdocumenta.com/esquemas/GT_AnulacionDocumento-0.1.0.xsd" Version="0.1">'
+SET @DTEENCA=@DTEENCA+'<dte:SAT>'
+SET @DTEENCA=@DTEENCA+'<dte:AnulacionDTE ID="DatosCertificados">'
+SET @DTEENCA=@DTEENCA+'<dte:DatosGenerales FechaEmisionDocumentoAnular="'+ @FechaEmisionDocumentoAnular +'" FechaHoraAnulacion="'+ @FechaHoraAnulacion +'"  ID="DatosAnulacion" IDReceptor="'+ @IDReceptor +'" MotivoAnulacion="'+ @U_MOTIVO_NC +'" NITEmisor="'+ @NIT +'" NumeroDocumentoAAnular="'+ @U_FIRMA_ELETRONICA +'"/>'
+SET @DTEENCA=@DTEENCA+'</dte:AnulacionDTE>'
+SET @DTEENCA=@DTEENCA+'</dte:SAT>'
+SET @DTEENCA=@DTEENCA+'</dte:GTAnulacionDocumento>'
+
+SET @RESULT=@DTEENCA
+
+SELECT  @RESULT XML_GENERADO
+GO
+

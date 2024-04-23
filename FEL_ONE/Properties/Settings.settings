@@ -1,0 +1,12 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="FEL_ONE.Properties" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="FEL_ONE_com_g4sdocumenta_pruebasfel_FactWSFront" Type="(Web Service URL)" Scope="Application">
+      <Value Profile="(Default)">https://pruebasfel.g4sdocumenta.com/webservicefront/factwsfront.asmx</Value>
+    </Setting>
+    <Setting Name="FEL_ONE_com_guatefacturas_dte_Guatefac" Type="(Web Service URL)" Scope="Application">
+      <Value Profile="(Default)">https://pdte.guatefacturas.com:443/webservices63/feltestSB/Guatefac</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>

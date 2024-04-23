@@ -1,0 +1,417 @@
+﻿GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE procedure [dbo].[FELONE_UTILS]
+
+@opcion NVARCHAR(100), 
+@param1 NVARCHAR(1000),
+@param2 NVARCHAR(1000),
+@param3 NVARCHAR(1000),
+@param4 NVARCHAR(1000),
+@param5 NVARCHAR(1000),
+@param6 NVARCHAR(1000),
+@param7 NVARCHAR(1000),
+@param8 NVARCHAR(1000),
+@param9 NVARCHAR(1000),
+@param10 NVARCHAR(1000)
+
+AS
+
+BEGIN
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-----FORMA-DE-LLAMADA---------------------------------------------------------------------------------------------------------------------------------------------------------------	
+-----"CALL FELONE_UTILS('OPCION','','','','','','','',''.'','')"--------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+--OPCIONES--------------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+--1-TIPODOCUMENTOS------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+--2-EMPRESA-------------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+--3-LLENASERIES---------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+--4-LLENASERIESA--------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+--5-LISTADOBATCH--------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+--6-LISTADOBATCHA-------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+--7-TRUE----------------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+--8-TRUEERROR-----------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+--9-FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+--10-FALSEA-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--11-TRUEERRORA---------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+--12-TRUEA--------------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+--1-TIPODOCUMENTOS------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+--TIPO-DE-DOCUMENTOS-A-UTILIZAR-----------------------------------------------------------------------------------------------------------------------------------------------------	
+
+	IF (@opcion = 'TipoDocumentos') 
+		BEGIN
+			DELETE FROM "@FEL_TIPODOC";
+			INSERT INTO "@FEL_TIPODOC" ("Code","LineId","U_CODIGO","U_DESCRIPCION") VALUES(1,1,'FACT','Facturas');
+			INSERT INTO "@FEL_TIPODOC" ("Code","LineId","U_CODIGO","U_DESCRIPCION") VALUES(2,2,'FCAM','Factura Cambiaria');
+			INSERT INTO "@FEL_TIPODOC" ("Code","LineId","U_CODIGO","U_DESCRIPCION") VALUES(3,3,'FESP','Factura Especial');
+			INSERT INTO "@FEL_TIPODOC" ("Code","LineId","U_CODIGO","U_DESCRIPCION") VALUES(4,4,'NCRE','Nota de Credito');
+			INSERT INTO "@FEL_TIPODOC" ("Code","LineId","U_CODIGO","U_DESCRIPCION") VALUES(5,5,'NDEB','Nota de Debito');
+			INSERT INTO "@FEL_TIPODOC" ("Code","LineId","U_CODIGO","U_DESCRIPCION") VALUES(6,6,'NABN','Nota de Abono');
+			INSERT INTO "@FEL_TIPODOC" ("Code","LineId","U_CODIGO","U_DESCRIPCION") VALUES(7,7,'FEXP','Factura Exportacion');	
+		END
+
+--2-EMPRESA-------------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+--EMPRESA-CERTIFICADORA-------------------------------------------------------------------------------------------------------------------------------------------------------------	
+
+	IF (@opcion = 'Empresa') 
+		BEGIN
+			SELECT '' as "Certificador", CompnyName as "Empresa" from OADM;
+		END
+
+--3-LLENASERIES---------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+--LLENA-SERIES----------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+
+	IF (@opcion = 'LLENASERIES') 
+		BEGIN		
+			SELECT 
+	 		a."Series" 																	AS "Series",
+	 		a."SeriesName" + ' (' +	CASE "ObjectCode" WHEN 13 THEN 
+	 									b."U_TIPO_DOC" 
+	 								WHEN 14  THEN 
+	 									b."U_TIPO_DOC" 
+	 								WHEN 18 THEN 
+		 								b."U_TIPO_DOC" 
+		 							ELSE 
+		 								'Falta Definicion'  
+		 							END + ')' 											AS "SeriesName" 
+			FROM NNM1 a 
+			INNER JOIN "@FEL_RESOLUCION" b 
+			ON a."Series"=b."U_SERIE" 
+			WHERE CASE ISNULL(b."U_ES_BATCH", '0') WHEN '0' THEN '0' ELSE 'Y' END = 'Y';
+		END
+
+--4-LLENASERIESA--------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+--LLENA-SERIES-ANULACION------------------------------------------------------------------------------------------------------------------------------------------------------------	
+
+	IF (@opcion = 'LLENASERIESA') 
+		BEGIN		
+			SELECT 
+	 		a."Series" 																	AS "Series",
+	 		a."SeriesName" + ' (' +	CASE "ObjectCode" WHEN 13 THEN 
+	 									b."U_TIPO_DOC" 
+	 								WHEN 14  THEN 
+	 									b."U_TIPO_DOC" 
+	 								WHEN 18 THEN 
+		 								b."U_TIPO_DOC" 
+		 							ELSE 
+		 								'Falta Definicion'  
+		 							END + ')' 											AS "SeriesName" 
+			FROM NNM1 a 
+			INNER JOIN "@FEL_RESOLUCION" b 
+			ON a."Series"=b."U_SERIE" 
+			WHERE CASE ISNULL(b."U_ES_BATCH", '0') WHEN '0' THEN '0' ELSE 'Y' END = 'Y';
+		END
+
+--5-LISTADOBATCH--------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+--LLENA-LISTADO-BATCH-DE-DOCUMENTOS-------------------------------------------------------------------------------------------------------------------------------------------------	
+
+	IF (@opcion = 'LISTADOBATCH') 
+		BEGIN
+				select 
+					Estado = case isnull(a.U_ESTADO_FACE,'P') when 'P' then 'Pendiente' when 'R' then 'Rechazado' when 'A' then 'Autorizado' end ,
+					DocNum 'No. SAP',
+					convert(char(10),DocDate,103)  'Fecha Documento' ,
+					CardName  'Cliente',
+					convert(char(10),convert(numeric(18,2),DocTotal,1))  'Total Documento', 
+					a.docentry '# DocEntry'
+				from 
+					oinv a 
+					inner join NNM1 b 
+					on a.Series = b.Series 
+				where 
+					isnull(U_ESTADO_FACE,'P') in ('P','R')  
+					and a.docdate between @param2 and  @param3
+					and   b.Series = @param1 
+			union 
+				select 
+					Estado=case isnull(a.U_ESTADO_FACE,'P') when 'P' then 'Pendiente' when 'R' then 'Rechazado' when 'A' then 'Autorizado' end , 
+					DocNum 'No. SAP',
+					convert(char(10),DocDate,103)  'Fecha Documento' ,
+					CardName  'Cliente',
+					convert(char(10),convert(numeric(18,2),DocTotal,1))  'Total Documento', 
+					a.docentry '# DocEntry'   
+				from 
+					ORIN  a 
+					inner join NNM1 b 
+					on a.Series = b.Series  
+				where 
+					isnull(U_ESTADO_FACE,'P') in ('P','R')  
+					and a.docdate between @param2 and  @param3
+					and   b.Series = @param1 
+			union 
+				select 
+					Estado=case isnull(a.U_ESTADO_FACE,'P') when 'P' then 'Pendiente' when 'R' then 'Rechazado' when 'A' then 'Autorizado' end , 
+					DocNum 'No. SAP',
+					convert(char(10),DocDate,103)  'Fecha Documento' ,
+					CardName  'Cliente',
+					convert(char(10),convert(numeric(18,2),DocTotal,1))  'Total Documento', 
+					a.docentry '# DocEntry'   
+				from 
+					OPCH  a 
+					inner join NNM1 b 
+					on a.Series = b.Series  
+				where 
+					isnull(U_ESTADO_FACE,'P') in ('P','R')  
+					and a.docdate between @param2 and  @param3
+					and   b.Series = @param1 
+			order by DocNum;
+		END
+
+--6-LISTADOBATCHA-------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+--LLENA-LISTADO-ANULACION-BATCH-DE-DOCUMENTOS---------------------------------------------------------------------------------------------------------------------------------------	
+
+	IF (@opcion = 'LISTADOBATCHA') 
+		BEGIN
+				select 
+					Estado=case isnull(a.U_ESTADO_FACE,'ANULAR') when 'ANULAR' then 'Pendiente'  when 'ANULADO' then 'Autorizado' end ,
+					DocNum 'No. SAP',
+					convert(char(10),DocDate,103)  'Fecha Documento' ,
+					CardName  'Cliente',
+					convert(char(10),convert(numeric(18,2),DocTotal,1))  'Total Documento', 
+					a.docentry '# DocEntry'
+				from 
+					oinv a 
+					inner join NNM1 b 
+					on a.Series = b.Series 
+				where
+					U_ESTADO_FACE in ('ANULAR')  
+					and a.docdate between @param2 and  @param3
+					and   b.Series = @param1 
+			union 
+				select 
+					Estado=case isnull(a.U_ESTADO_FACE,'ANULAR') when 'ANULAR' then 'Pendiente'  when 'ANULADO' then 'Autorizado' end ,
+					DocNum 'No. SAP',
+					convert(char(10),DocDate,103)  'Fecha Documento' ,
+					CardName  'Cliente',
+					convert(char(10),convert(numeric(18,2),DocTotal,1))  'Total Documento', 
+					a.docentry '# DocEntry'  
+				from 
+					ORIN  a 
+					inner join NNM1 b 
+					on a.Series = b.Series  
+				where 
+					U_ESTADO_FACE in ('ANULAR')   
+					and a.docdate between @param2 and  @param3
+					and   b.Series = @param1 
+			union 
+				select 
+					Estado=case isnull(a.U_ESTADO_FACE,'ANULAR') when 'ANULAR' then 'Pendiente'  when 'ANULADO' then 'Autorizado' end ,
+					DocNum 'No. SAP',
+					convert(char(10),DocDate,103)  'Fecha Documento' ,
+					CardName  'Cliente',
+					convert(char(10),convert(numeric(18,2),DocTotal,1))  'Total Documento', 
+					a.docentry '# DocEntry'   
+				from 
+					OPCH  a 
+					inner join NNM1 b 
+					on a.Series = b.Series  
+				where 
+					U_ESTADO_FACE in ('ANULAR')    
+					and a.docdate between @param2 and  @param3
+					and   b.Series = @param1 
+			order by DocNum;
+		END
+
+--7-TRUE----------------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+--FIRMA-AUTORIZADA------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+
+	IF (@opcion = 'True')
+		BEGIN
+			IF @param2 = 'NCRE' OR @param2 = 'NABN'
+				BEGIN
+					UPDATE "ORIN" SET 
+						"U_ESTADO_FACE" ='A', 
+						"U_FIRMA_ELETRONICA"= @param3, 
+						"U_NUMERO_DOCUMENTO"= @param4, 
+						"U_SERIE_FACE"= @param5, 
+						"U_FACE_PDFFILE"= @param6, 
+						"U_FECHA_CERT_FACE" = @param7, 
+						"U_FECHA_ENVIO_FACE" = @param8, 
+						"U_MOTIVO_RECHAZO"= '' 
+					WHERE "DocEntry"=@param1;
+				END
+			ELSE IF @param2 = 'FESP' 
+				BEGIN
+					UPDATE "OPCH" SET 
+						"U_ESTADO_FACE" ='A', 
+						"U_FIRMA_ELETRONICA"= @param3, 
+						"U_NUMERO_DOCUMENTO"= @param4, 
+						"U_SERIE_FACE"= @param5, 
+						"U_FACE_PDFFILE"= @param6, 
+						"U_FECHA_CERT_FACE" = @param7, 
+						"U_FECHA_ENVIO_FACE" = @param8, 
+						"U_MOTIVO_RECHAZO" = '' 
+					WHERE "DocEntry"=@param1;
+				END
+			ELSE
+				BEGIN
+					UPDATE "OINV" SET 
+						"U_ESTADO_FACE" ='A', 
+						"U_FIRMA_ELETRONICA"= @param3, 
+						"U_NUMERO_DOCUMENTO"= @param4, 
+						"U_SERIE_FACE"= @param5, 
+						"U_FACE_PDFFILE"= @param6, 
+						"U_FECHA_CERT_FACE" = @param7, 
+						"U_FECHA_ENVIO_FACE" = @param8, 
+						"U_MOTIVO_RECHAZO" = ''
+					WHERE "DocEntry"=@param1;
+				END
+		END
+
+--8-TRUEERROR-----------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+--ERROR-WEB-------------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+
+	IF (@opcion = 'TrueError') 
+		BEGIN
+			IF @param2 = 'NCRE' OR @param2 = 'NABN'
+				BEGIN
+					UPDATE "ORIN" SET 
+						"U_ESTADO_FACE" ='A', 
+						"U_MOTIVO_RECHAZO" = @param3 
+					WHERE "DocEntry"=@param1;
+				END
+			ELSE IF @param2 = 'FESP' 
+				BEGIN
+					UPDATE "OPCH" SET 
+						"U_ESTADO_FACE" ='A',  
+						"U_MOTIVO_RECHAZO" = @param3 
+					WHERE "DocEntry"=@param1;
+				END
+			ELSE 
+				BEGIN
+					UPDATE "OINV" SET 
+						"U_ESTADO_FACE" ='A',  
+						"U_MOTIVO_RECHAZO" = @param3 
+					WHERE "DocEntry"=@param1;
+				END
+		END
+
+--9-FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+--FIRMA-NO-AUTORIZADA---------------------------------------------------------------------------------------------------------------------------------------------------------------	
+
+	IF (@opcion = 'False') 
+		BEGIN
+			IF @param2 = 'NCRE' OR @param2 = 'NABN'
+				BEGIN
+					UPDATE "OINV" SET 
+						"U_ESTADO_FACE" ='R', 
+						"U_MOTIVO_RECHAZO" = @param3 
+					WHERE "DocEntry"=@param1;
+				END
+			ELSE IF @param2 = 'FESP'  
+				BEGIN
+					UPDATE "ORIN" SET 
+						"U_ESTADO_FACE" ='R',  
+						"U_MOTIVO_RECHAZO" = @param3 
+					WHERE "DocEntry"=@param1;
+				END
+			ELSE 
+				BEGIN
+					UPDATE "OPCH" SET 
+						"U_ESTADO_FACE" ='R',  
+						"U_MOTIVO_RECHAZO" = @param3 
+					WHERE "DocEntry"=@param1;
+				END
+		END	
+
+--10-FALSEA-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--ANULACION-ERROR-------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+
+	IF (@opcion = 'FalseA') 
+		BEGIN
+			IF @param2 = 'NCRE' OR @param2 = 'NABN'
+				BEGIN
+					UPDATE "ORIN" SET 
+						"U_ESTADO_FACE" ='ANULAR', 
+						"U_MOTIVO_RECHAZO" = @param3 
+					WHERE "DocEntry"=@param1;
+				END
+			ELSE IF @param2 = 'FESP' 
+				BEGIN
+					UPDATE "OPCH" SET 
+						"U_ESTADO_FACE" ='ANULAR',  
+						"U_MOTIVO_RECHAZO" = @param3 
+					WHERE "DocEntry"=@param1;
+				END
+			ELSE 
+				BEGIN
+					UPDATE "OINV" SET 
+						"U_ESTADO_FACE" ='ANULAR',  
+						"U_MOTIVO_RECHAZO" = @param3 
+					WHERE "DocEntry"=@param1;
+				END
+		END	
+
+--11-TRUEERRORA---------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+--ERROR-WEB-ANULACION---------------------------------------------------------------------------------------------------------------------------------------------------------------	
+
+	IF (@opcion = 'TrueErrorA') 
+		BEGIN
+			IF @param2 = 'NCRE' OR @param2 = 'NABN'
+				BEGIN
+					UPDATE "ORIN" SET 
+						"U_ESTADO_FACE" ='ANULADO', 
+						"U_MOTIVO_RECHAZO" = @param3 
+					WHERE "DocEntry" = @param1;
+				END
+			ELSE IF @param2 = 'FESP'  
+				BEGIN
+					UPDATE "OPCH" SET 
+						"U_ESTADO_FACE" ='ANULADO', 
+						"U_MOTIVO_RECHAZO" = @param3 
+					WHERE "DocEntry" = @param1;
+				END
+			ELSE 
+				BEGIN
+					UPDATE "OINV" SET 
+						"U_ESTADO_FACE" ='ANULADO',  
+						"U_MOTIVO_RECHAZO" = @param3 
+					WHERE "DocEntry" = @param1;
+				END
+		END
+
+--12-TRUEA--------------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+--ERROR-WEB-------------------------------------------------------------------------------------------------------------------------------------------------------------------------	
+
+	IF (@opcion = 'TrueA')
+		BEGIN
+			IF @param2 = 'NCRE' OR @param2 = 'NABN'
+				BEGIN
+					UPDATE "ORIN" SET 
+						"U_ESTADO_FACE" ='ANULADO', 
+						"U_FIRMA_ELETRONICA"= @param3, 
+						"U_MOTIVO_RECHAZO" = '', 
+						"U_FACE_PDFFILE"= @param6 
+					WHERE "DocEntry"=@param1;
+				END
+			ELSE IF @param2 = 'FESP'  
+				BEGIN
+					UPDATE "OPCH" SET 
+						"U_ESTADO_FACE" ='ANULADO', 
+						"U_FIRMA_ELETRONICA"= @param3, 
+						"U_MOTIVO_RECHAZO" = '', 
+						"U_FACE_PDFFILE"= @param6 
+					WHERE "DocEntry"=@param1;
+				END
+			ELSE
+				BEGIN
+					UPDATE "OINV" SET 
+						"U_ESTADO_FACE" ='ANULADO', 
+						"U_FIRMA_ELETRONICA"= @param3, 
+						"U_MOTIVO_RECHAZO" = '', 
+						"U_FACE_PDFFILE"= @param6 
+					WHERE "DocEntry"=@param1;
+				END
+		END
+
+------------------------------------------------------------------------FELONE------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------STANDAR-----------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------VERSION-----------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------1.0.0------------------------------------------------------------------------------------------------------
+END;
+

@@ -1,0 +1,419 @@
+USE [InteramericanCarRental]
+GO
+
+/****** Object:  StoredProcedure [dbo].[FELONE_DIGIFACT_DETALLE]    Script Date: 16/05/2022 15:39:10 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+CREATE PROCEDURE [dbo].[FELONE_DIGIFACT_DETALLE]
+	@Docentry int,
+	@Tipo char(6),
+	@CursorDET CURSOR VARYING OUTPUT
+AS
+
+IF @Tipo='FACT' OR @Tipo='FCAM'
+BEGIN
+SET @CursorDET = CURSOR
+			FORWARD_ONLY STATIC FOR
+select
+    *
+from
+    (
+        select
+            LineNum,
+			a."Quantity" "Cantidad",
+            'UND' "UnidadMedida",
+            replace(ISNULL(cast(a."U_texto_factura" as nvarchar(max)),a.Dscription),'&','&amp;') "Descripcion",
+            CASE
+                WHEN a."TaxCode" = 'EXE' then case
+                    when a."Currency" = 'USD' then (
+                        ("TotalFrgn" ) / (
+                            CASE
+                                WHEN a."Quantity" <= 0 then 1
+                                else a."Quantity"
+                            end
+                        )
+                    )
+                    else ("LineTotal"+a."VatSum")
+                end
+                else case
+                    when a."Currency" = 'USD' then (
+                        ("TotalFrgn" + a."VatSumFrgn") / (
+                            CASE
+                                WHEN a."Quantity" <= 0 then 1
+                                else a."Quantity"
+                            end
+                        )
+                    )
+                    else
+                     case when C.doctype = 'I' then ("LineTotal"+a."VatSum") / (
+                            
+							a."Quantity"
+							--CASE
+                                --WHEN a."Quantity" = 0.1 then 1
+                                --else a."Quantity"
+                            --end
+                        ) else  "PriceAfVAT" end
+                end
+            end as "PrecioUnitario",
+            CASE
+                WHEN a."TaxCode" = 'EXE' then case
+                    when a."Currency" = 'USD' then (
+                        ("TotalFrgn") / (
+                            CASE
+                                WHEN a."Quantity" <= 0 then 1
+                                else a."Quantity"
+                            end
+                        )
+                    )
+                    else ("LineTotal"+a."VatSum")
+                end
+                else case
+                    when a."Currency" = 'USD' then (
+                        ("TotalFrgn" + a."VatSumFrgn") / (
+                            a."Quantity"
+							--CASE
+                                --WHEN a."Quantity" <= 0 then 1
+                                --else a."Quantity"
+                            --end
+                        )
+                    )
+                    else  case when C.doctype = 'I' then ("LineTotal"+a."VatSum") else  "PriceAfVAT" end
+                end
+            end *(
+                /* a.Quantity*10*/
+                1
+            ) as "Precio",
+            '0' "Descuento",
+            'IVA' "INombreCorto",
+            case
+                when a."TaxCode" = 'IVA' then 1
+                else 2
+            end as "ICodigoUnidadGravable",
+            CASE
+                WHEN a."TaxCode" = 'EXE' then case
+                    when a."Currency" = 'USD' then "TotalFrgn"
+                    else ("LineTotal"+a."VatSum")
+                end
+                else case
+                    when a."Currency" = 'USD' then '11111'
+                    else (("LineTotal"+a."VatSum")  / 1.12) 
+                end
+            end as "IMontoGravable",
+            CASE
+                WHEN a."TaxCode" = 'EXE' then 0
+                else case
+                    when a."Currency" = 'USD' then round("TotalFrgn" * 0.12, 2)
+                    else round(( case when C.doctype = 'I' then ("LineTotal"+a."VatSum") else  "PriceAfVAT" end/ 1.12) * 0.12, 2)
+                end
+            end as "IMontoImpuesto",
+            CASE
+                WHEN a."TaxCode" = 'EXE' then case
+                    when a."Currency" = 'USD' then "TotalFrgn"
+                    else ("LineTotal"+a."VatSum")
+                end
+                else case
+                    when a."Currency" = 'USD' then "TotalFrgn" + a."VatSumFrgn"
+                    else  case when C.doctype = 'I' then ("LineTotal"+a."VatSum") else  "PriceAfVAT" end
+                end
+            end as "Total"
+        FROM
+            INV1 A
+            left JOIN OITM B ON A.ITEMCODE = B.ItemCode
+            INNER JOIN OINV C ON A.DocEntry = C.DocEntry
+        WHERE
+            A.DocEntry = @Docentry
+            AND A.DiscPrcnt = 0
+        UNION
+        select
+            LineNum,
+            a."Quantity" "Cantidad",
+            'UND' "UnidadMedida",
+			replace(ISNULL(cast(a."U_texto_factura" as nvarchar(max)),a.Dscription),'&','&amp;') "Descripcion",
+            CASE
+                WHEN a."TaxCode" = 'EXE' then case
+                    when a."Currency" = 'USD' then (
+                        ("TotalFrgn") / (
+                            CASE
+                                WHEN a."Quantity" = 0.1 then 1
+                                else a."Quantity"
+                            end
+                        )
+                    )
+                    else (
+                        (("LineTotal"+a."VatSum") ) / (
+                            CASE
+                                WHEN a."Quantity" = 0.1 then 1
+                                else a."Quantity"
+                            end
+                        )
+                    )
+                end
+                else case
+                    when a."Currency" = 'USD' then (
+                        ("TotalFrgn" + a."VatSumFrgn") / (
+                            CASE
+                                WHEN a."Quantity" = 0.1 then 1
+                                else a."Quantity"
+                            end
+                        )
+                    )
+                    else
+                     case when C.doctype = 'I' then ("LineTotal"+a."VatSum") / (
+                            CASE
+                                WHEN a."Quantity" = 0.1 then 1
+                                else a."Quantity"
+                            end
+                        ) else  "PriceAfVAT" end
+                end
+            end as "PrecioUnitario",
+            CASE
+                WHEN a."TaxCode" = 'EXE' then case
+                    when a."Currency" = 'USD' then (
+                        ("TotalFrgn") / (
+                            CASE
+                                WHEN a."Quantity" = 0.1 then 1
+                                else a."Quantity"
+                            end
+                        )
+                    )
+                    else (
+                        (("LineTotal"+a."VatSum") ) / (
+                            CASE
+                                WHEN a."Quantity" = 0.1 then 1
+                                else a."Quantity"
+                            end
+                        )
+                    )
+                end
+                else case
+                    when a."Currency" = 'USD' then (
+                        ("TotalFrgn" + a."VatSumFrgn") / (
+                            CASE
+                                WHEN a."Quantity" = 0.1 then 1
+                                else a."Quantity"
+                            end
+                        )
+                    )
+                    else  case when C.doctype = 'I' then ("LineTotal"+a."VatSum") else  "PriceAfVAT" end
+                end
+            end *(
+                1
+            ) as "Precio",
+            '0' "Descuento",
+            'IVA' as "INombreCorto",
+            case
+                when a."TaxCode" = 'IVA' then 1
+                else 2
+            end as "ICodigoUnidadGravable",
+            (
+                (
+                    CASE
+                        WHEN a."TaxCode" = 'EXE' then case
+                            when a."Currency" = 'USD' then (
+                                ("TotalFrgn") / (
+                                    CASE
+                                        WHEN a."Quantity" = 0.1 then 1
+                                        else a."Quantity"
+                                    end
+                                )
+                            )
+                            else (
+                                (("LineTotal"+a."VatSum") ) / (
+                                    CASE
+                                        WHEN a."Quantity" = 0.1 then 1
+                                        else a."Quantity"
+                                    end
+                                )
+                            )
+                        end
+                        else case
+                            when a."Currency" = 'USD' then (
+                                ("TotalFrgn" + a."VatSumFrgn") / (
+                                    CASE
+                                        WHEN a."Quantity" = 0.4 then 1
+                                        else a."Quantity"
+                                    end
+                                )
+                            )
+                            else
+							( case when C.doctype = 'I' then ("LineTotal"+a."VatSum") else  "PriceAfVAT" end/ 1.12)
+                        end
+                    end
+                )
+            ) as "IMontoGravable",
+            (
+                (
+                    CASE
+                        WHEN a."TaxCode" = 'EXE' then case
+                            when a."Currency" = 'USD' then (
+                                ("TotalFrgn") / (
+                                    CASE
+                                        WHEN a."Quantity" = 0.1 then 1
+                                        else a."Quantity"
+                                    end
+                                )
+                            )
+                            else 0
+                        end
+                        else case
+                            when a."Currency" = 'USD' then (
+                                ("TotalFrgn" + a."VatSumFrgn") / (
+                                    CASE
+                                        WHEN a."Quantity" = 0.1 then 1
+                                        else a."Quantity"
+                                    end
+                                )
+                            )
+                            else round(( case when C.doctype = 'I' then ("LineTotal"+a."VatSum") else  "PriceAfVAT" end / 1.12) * 0.12, 2)
+                        end
+                    end
+                )
+            ) as "IMontoImpuesto",
+            (
+                (
+                    CASE
+                        WHEN a."TaxCode" = 'EXE' then case
+                            when a."Currency" = 'USD' then (
+                                ("TotalFrgn") / (
+                                    CASE
+                                        WHEN a."Quantity" = 0.1 then 1
+                                        else a."Quantity"
+                                    end
+                                )
+                            )
+                            else (
+                                (("LineTotal"+a."VatSum")) / (
+                                    CASE
+                                        WHEN a."Quantity" = 0.1 then 1
+                                        else a."Quantity"
+                                    end
+                                )
+                            )
+                        end
+                        else case
+                            when a."Currency" = 'USD' then (
+                                ("TotalFrgn" + a."VatSumFrgn") / (
+                                    CASE
+                                        WHEN a."Quantity" = 0.1 then 1
+                                        else a."Quantity"
+                                    end
+                                )
+                            )
+                            else  case when C.doctype = 'I' then ("LineTotal"+a."VatSum") else "PriceAfVAT" end
+                        end
+                    end * 1
+                )
+            ) as "Total"
+        FROM
+            INV1 A
+            left JOIN OITM B ON A.ITEMCODE = B.ItemCode
+            INNER JOIN OINV C ON A.DocEntry = C.DocEntry
+        WHERE
+            A.DocEntry = @Docentry
+            AND A.DiscPrcnt != 0
+    ) Resultante
+order by
+    LineNum asc
+
+
+END
+IF @Tipo='NDEB' OR @Tipo='FEXP' OR @Tipo='RDON'
+BEGIN
+	PRINT 'ENTRA AL PRIMER IF'
+	SET @CursorDET = CURSOR
+	FORWARD_ONLY STATIC FOR
+select
+a."Quantity" "Cantidad" ,
+'UND' "UnidadMedida" ,
+replace(ISNULL(cast(a."U_texto_factura" as nvarchar(max)),a.Dscription),'&','&amp;') "Descripcion",
+Case WHEN a."TaxCode" = 'EXE' then case when a."Currency" = 'USD' then ( ("TotalFrgn" ) / ( Case WHEN a."Quantity" <= 0 then 1 Else a."Quantity" End ) ) Else Case when C.doctype = 'I' then ("LineTotal" + a."VatSum" ) / ( a."Quantity") else "PriceAfVAT" end End Else Case when a."Currency" = 'USD' then ( ("TotalFrgn" + a."VatSumFrgn") / ( Case WHEN a."Quantity" <= 0 then 1 Else a."Quantity" End ) ) Else Case when C.doctype = 'I' then ("LineTotal" + a."VatSum" ) / ( a."Quantity") else "PriceAfVAT" end End End As "PrecioUnitario",
+
+CASE WHEN a."TaxCode" = 'EXE' then case when a."Currency" = 'USD' then (("TotalFrgn") / ( CASE WHEN a."Quantity" = 0.1 then 1 else a."Quantity" end) )else ( (("LineTotal"+a."VatSum") ) / (CASE WHEN a."Quantity" = 0.1 then 1 else a."Quantity"end))end else case when a."Currency" = 'USD' then (("TotalFrgn" + a."VatSumFrgn") / (CASE WHEN a."Quantity" = 0.1 then 1 else a."Quantity" end))else  case when C.doctype = 'I' then ("LineTotal" + a."VatSum" ) else  "PriceAfVAT" end end end *(1) as "Precio",
+'0' "Descuento" ,
+'IVA' "INombreCorto",
+case when a."TaxCode" = 'IVA' then 1 else 2 end as "ICodigoUnidadGravable" ,
+CASE WHEN a."TaxCode" = 'EXE' then case when a."Currency" = 'USD' then "TotalFrgn" else "LineTotal" end else case when a."Currency" = 'USD' then '11111' else ( case when C.doctype = 'I' then "LineTotal" else "PriceAfVAT" end) end end as "IMontoGravable" ,
+CASE WHEN a."TaxCode" = 'EXE' then 0 else case when a."Currency" = 'USD' then round("TotalFrgn" *0.12,2) else round((case when C.doctype = 'I' then "LineTotal" else "PriceAfVAT" end) *0.12,2) end end as "IMontoImpuesto" ,
+CASE WHEN a."TaxCode" = 'EXE' then case when a."Currency" = 'USD' then "TotalFrgn"  else "LineTotal"  end else case when a."Currency" = 'USD' then "TotalFrgn" + a."VatSumFrgn" else case when C.doctype = 'I' then "LineTotal" + a."VatSum" else "PriceAfVAT" end end end as "Total"
+FROM INV1 A
+	left JOIN OITM B
+	ON A.ITEMCODE = B.ItemCode 
+	INNER JOIN OINV C
+	ON A.DocEntry=C.DocEntry 
+	WHERE A.DocEntry = @Docentry
+
+
+END
+ELSE IF @Tipo='NCRE' OR @Tipo='NABN'
+BEGIN
+   PRINT 'ENTRA AL PRIMER IF'
+	SET @CursorDET = CURSOR
+	FORWARD_ONLY STATIC FOR
+select
+a."Quantity" "Cantidad" ,
+'UND' "UnidadMedida" ,
+replace(ISNULL(cast(a."U_texto_factura" as nvarchar(max)),a.Dscription),'&','&amp;') "Descripcion",
+Case WHEN a."TaxCode" = 'EXE' then case when a."Currency" = 'USD' then ( ("TotalFrgn" ) / ( Case WHEN a."Quantity" <= 0 then 1 Else a."Quantity" End ) ) Else Case when C.doctype = 'I' then ("LineTotal" + a."VatSum" ) / ( a."Quantity") else "PriceAfVAT" end End Else Case when a."Currency" = 'USD' then ( ("TotalFrgn" + a."VatSumFrgn") / ( Case WHEN a."Quantity" <= 0 then 1 Else a."Quantity" End ) ) Else Case when C.doctype = 'I' then ("LineTotal" + a."VatSum" ) / ( a."Quantity") else "PriceAfVAT" end End End As "PrecioUnitario",
+CASE WHEN a."TaxCode" = 'EXE' then case when a."Currency" = 'USD' then (("TotalFrgn") / ( CASE WHEN a."Quantity" = 0.1 then 1 else a."Quantity" end) )else ( (("LineTotal"+a."VatSum") ) / (CASE WHEN a."Quantity" = 0.1 then 1 else a."Quantity"end))end else case when a."Currency" = 'USD' then (("TotalFrgn" + a."VatSumFrgn") / (CASE WHEN a."Quantity" = 0.1 then 1 else a."Quantity" end))else  case when C.doctype = 'I' then ("LineTotal" + a."VatSum" ) else  "PriceAfVAT" end end end *(1) as "Precio",
+'0' "Descuento" ,
+'IVA' "INombreCorto",
+case when a."TaxCode" = 'IVA' then 1 else 2 end as "ICodigoUnidadGravable" ,
+CASE WHEN a."TaxCode" = 'EXE' then case when a."Currency" = 'USD' then "TotalFrgn" else "LineTotal" end else case when a."Currency" = 'USD' then '11111' else ( case when C.doctype = 'I' then "LineTotal" else "PriceAfVAT" end) end end as "IMontoGravable" ,
+CASE WHEN a."TaxCode" = 'EXE' then 0 else case when a."Currency" = 'USD' then round("TotalFrgn" *0.12,2) else round((case when C.doctype = 'I' then "LineTotal" else "PriceAfVAT" end) *0.12,2) end end as "IMontoImpuesto" ,
+CASE WHEN a."TaxCode" = 'EXE' then case when a."Currency" = 'USD' then "TotalFrgn"  else "LineTotal"  end else case when a."Currency" = 'USD' then "TotalFrgn" + a."VatSumFrgn" else case when C.doctype = 'I' then "LineTotal" + a."VatSum" else "PriceAfVAT" end end end as "Total"
+FROM RIN1 A
+	left JOIN OITM B
+	ON A.ITEMCODE = B.ItemCode 
+	INNER JOIN ORIN C
+	ON A.DocEntry=C.DocEntry 
+	WHERE A.DocEntry = @Docentry
+
+
+END
+ELSE IF @Tipo='FESP'
+BEGIN
+   PRINT 'ENTRA AL PRIMER IF'
+	SET @CursorDET = CURSOR
+	FORWARD_ONLY STATIC FOR
+select
+CASE WHEN (CASE WHEN a."Quantity" <= 0 then 1 else   a."Quantity" end) < 0 then 1 else  (CASE WHEN a."Quantity" <= 0 then 1 else a."Quantity" end) end "Cantidad" ,
+'UND' "UnidadMedida" ,
+a."Dscription" "Descripcion" ,
+CASE WHEN a."TaxCode" = 'EXE' then case when a."Currency" = 'USD' then (("TotalFrgn") / (CASE WHEN a."Quantity" <= 0 then 1 else   a."Quantity" end)) else (("LineTotal") / (CASE WHEN a."Quantity" <= 0 then 1 else   a."Quantity" end)) end else case when a."Currency" = 'USD' then (("TotalFrgn"+ a."VatSumFrgn") / (CASE WHEN a."Quantity" <= 0 then 1 else   a."Quantity" end)) else (("LineTotal"+ a."VatSum") / (CASE WHEN a."Quantity" <= 0 then 1 else   a."Quantity" end)) end end as "PrecioUnitario" ,
+CASE WHEN a."TaxCode" = 'EXE' then case when a."Currency" = 'USD' then ("TotalFrgn") else ("LineTotal") end else case when a."Currency" = 'USD' then ("TotalFrgn" + a."VatSumFrgn") else ("LineTotal" + a."VatSum") end end as "Precio" ,
+'0' "Descuento" ,
+'IVA' "INombreCorto",
+case when a."TaxCode" = 'IVA' then 1 else 2 end as "ICodigoUnidadGravable" ,
+CASE WHEN a."TaxCode" = 'EXE' then case when a."Currency" = 'USD' then "TotalFrgn" else "LineTotal" end else case when a."Currency" = 'USD' then (("TotalFrgn" + a."VatSumFrgn") - round("TotalFrgn" *0.12,2)) else (("LineTotal" + a."VatSum") - round("LineTotal" *0.12,2)) end end as "IMontoGravable" ,
+CASE WHEN a."TaxCode" = 'EXE' then 0 else case when a."Currency" = 'USD' then round("TotalFrgn" *0.12,2) else round("LineTotal" *0.12,2) end end as "IMontoImpuesto" ,
+CASE WHEN a."TaxCode" = 'EXE' then case when a."Currency" = 'USD' then "TotalFrgn"  else "LineTotal"  end else case when a."Currency" = 'USD' then "TotalFrgn" + a."VatSumFrgn" else "LineTotal" + a."VatSum" end end as "Total"
+FROM PCH1 A
+	left JOIN OITM B
+	ON A.ITEMCODE = B.ItemCode 
+	INNER JOIN OPCH C
+	ON A.DocEntry=C.DocEntry 
+	WHERE A.DocEntry = @Docentry
+END
+OPEN @CursorDET;
+GO
+

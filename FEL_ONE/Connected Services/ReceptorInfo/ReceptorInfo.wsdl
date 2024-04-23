@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<definitions xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="FEL" xmlns:wsdlns="FEL" name="ReceptorInfo" targetNamespace="FEL" xmlns="http://schemas.xmlsoap.org/wsdl/">
+  <types>
+    <xsd:schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" elementFormDefault="qualified" targetNamespace="FEL">
+      <xsd:element name="ReceptorInfo.Execute">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element minOccurs="1" maxOccurs="1" name="Cliente" type="xsd:string" />
+            <xsd:element minOccurs="1" maxOccurs="1" name="Usuario" type="xsd:string" />
+            <xsd:element minOccurs="1" maxOccurs="1" name="Clave" type="xsd:string" />
+            <xsd:element minOccurs="1" maxOccurs="1" name="Receptorid" type="xsd:string" />
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="ReceptorInfo.ExecuteResponse">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element minOccurs="1" maxOccurs="1" name="Informacion" type="xsd:string" />
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+    </xsd:schema>
+  </types>
+  <message name="ReceptorInfo.ExecuteSoapIn">
+    <part name="parameters" element="wsdlns:ReceptorInfo.Execute" />
+  </message>
+  <message name="ReceptorInfo.ExecuteSoapOut">
+    <part name="parameters" element="wsdlns:ReceptorInfo.ExecuteResponse" />
+  </message>
+  <portType name="ReceptorInfoSoapPort">
+    <operation name="Execute">
+      <input message="wsdlns:ReceptorInfo.ExecuteSoapIn" />
+      <output message="wsdlns:ReceptorInfo.ExecuteSoapOut" />
+    </operation>
+  </portType>
+  <binding name="ReceptorInfoSoapBinding" type="wsdlns:ReceptorInfoSoapPort">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <operation name="Execute">
+      <soap:operation soapAction="FELaction/ARECEPTORINFO.Execute" />
+      <input>
+        <soap:body use="literal" />
+      </input>
+      <output>
+        <soap:body use="literal" />
+      </output>
+    </operation>
+  </binding>
+  <service name="ReceptorInfo">
+    <port name="ReceptorInfoSoapPort" binding="wsdlns:ReceptorInfoSoapBinding">
+      <soap:address location="https://www.facturaenlineagt.com/areceptorinfo" />
+    </port>
+  </service>
+</definitions>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<definitions xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:tns="FEL" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:wsdlns="FEL" xmlns:tns1="FEL" name="Anulacion" targetNamespace="FEL" xmlns="http://schemas.xmlsoap.org/wsdl/">
+  <types>
+    <xsd:schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" elementFormDefault="qualified" targetNamespace="FEL">
+      <xsd:element name="Anulacion.Execute">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element minOccurs="1" maxOccurs="1" name="Cliente" type="xsd:string" />
+            <xsd:element minOccurs="1" maxOccurs="1" name="Usuario" type="xsd:string" />
+            <xsd:element minOccurs="1" maxOccurs="1" name="Clave" type="xsd:string" />
+            <xsd:element minOccurs="1" maxOccurs="1" name="Nitemisor" type="xsd:string" />
+            <xsd:element minOccurs="1" maxOccurs="1" name="Numautorizacionuuid" type="xsd:string" />
+            <xsd:element minOccurs="1" maxOccurs="1" name="Motivoanulacion" type="xsd:string" />
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="Anulacion.ExecuteResponse">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element minOccurs="1" maxOccurs="1" name="Respuesta" type="xsd:string" />
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+    </xsd:schema>
+  </types>
+  <message name="Anulacion.ExecuteSoapIn">
+    <part name="parameters" element="tns1:Anulacion.Execute" />
+  </message>
+  <message name="Anulacion.ExecuteSoapOut">
+    <part name="parameters" element="tns1:Anulacion.ExecuteResponse" />
+  </message>
+  <portType name="AnulacionSoapPort">
+    <operation name="Execute">
+      <input message="tns1:Anulacion.ExecuteSoapIn" />
+      <output message="tns1:Anulacion.ExecuteSoapOut" />
+    </operation>
+  </portType>
+  <binding name="AnulacionSoapBinding" type="tns1:AnulacionSoapPort">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <operation name="Execute">
+      <soap:operation soapAction="FELaction/AANULACION.Execute" />
+      <input>
+        <soap:body use="literal" />
+      </input>
+      <output>
+        <soap:body use="literal" />
+      </output>
+    </operation>
+  </binding>
+  <service name="Anulacion">
+    <port name="AnulacionSoapPort" binding="tns1:AnulacionSoapBinding">
+      <soap:address location="http://pruebas.ecofactura.com.gt:8080/fel/aanulacion" />
+    </port>
+  </service>
+</definitions>

@@ -1,0 +1,120 @@
+CREATE PROCEDURE "FELONE_TEKRA_ANUL"
+(
+IN DOCENTRY INTEGER,
+IN TIPO varchar(5),
+IN NIT varchar(30)
+)
+
+LANGUAGE SQLSCRIPT AS
+
+DTEENCA VARCHAR(1000000);
+RESULT VARCHAR(1000000);
+ENCODIGN VARCHAR(1000000);
+
+BEGIN
+-----------TEKRA------------
+DECLARE Tusuario VARCHAR(254);
+DECLARE Tclave VARCHAR(254);
+DECLARE Tcliente VARCHAR(254);
+DECLARE Tcontrato VARCHAR(254);
+DECLARE Twsdl VARCHAR(254);
+
+DECLARE U_FIRMA_ELETRONICA VARCHAR(100);
+DECLARE IDReceptor VARCHAR(100);
+DECLARE FechaEmisionDocumentoAnular VARCHAR(100);
+DECLARE FechaHoraAnulacion VARCHAR(100);
+DECLARE U_MOTIVO_NC VARCHAR(100);
+
+--CURSORES
+
+IF (:Tipo='FACT' OR :Tipo='NDEB' OR :Tipo='FCAM' OR :Tipo='RDON') then
+			Select 
+			IFNULL(t0."U_NUMERO_DOCUMENTO_NC",''),	
+			CASE T0."U_NIT" when 'C/F' then 'CF' when 'cf' then 'CF' when 'c/f' then 'CF' else ifnull(replace(T0."U_NIT",'-',''),'CF') end ,
+			IFNULL(t0."U_FECHA_NC",''),
+			TO_VARCHAR (current_date, 'YYYY-MM-DD')  ||'T'|| current_time ||'-06:00',
+			ifnull(t0."U_MOTIVO_NC",'')
+			into 
+			U_FIRMA_ELETRONICA,
+			IDReceptor,
+			FechaEmisionDocumentoAnular,
+			FechaHoraAnulacion,
+			U_MOTIVO_NC
+			from OINV t0 INNER JOIN OCRD T1 ON T1."CardCode" = T0."CardCode"
+			where t0."DocEntry" =:Docentry;
+END IF;
+	IF (:Tipo='NCRE' or :Tipo='NABN') THEN
+			Select 
+			IFNULL(t0."U_NUMERO_DOCUMENTO_NC",''),	
+			CASE T0."U_NIT" when 'C/F' then 'CF' when 'cf' then 'CF' when 'c/f' then 'CF' else ifnull(replace(T0."U_NIT",'-',''),'CF') end ,
+			IFNULL(t0."U_FECHA_NC",''),
+			TO_VARCHAR (current_date, 'YYYY-MM-DD')  ||'T'|| current_time ||'-06:00',
+			ifnull(t0."U_MOTIVO_NC",'')
+			into 
+			U_FIRMA_ELETRONICA,
+			IDReceptor,
+			FechaEmisionDocumentoAnular,
+			FechaHoraAnulacion,
+			U_MOTIVO_NC
+			from ORIN t0 INNER JOIN OCRD T1 ON T1."CardCode" = T0."CardCode"
+			where t0."DocEntry" =:Docentry;
+	end IF;
+
+	IF (:Tipo='FESP') THEN 
+			Select 
+			IFNULL(t0."U_NUMERO_DOCUMENTO_NC",''),	
+			CASE T0."U_NIT" when 'C/F' then 'CF' when 'cf' then 'CF' when 'c/f' then 'CF' else ifnull(replace(T0."U_NIT",'-',''),'CF') end ,
+			IFNULL(t0."U_FECHA_NC",''),
+			TO_VARCHAR (current_date, 'YYYY-MM-DD')  ||'T'|| current_time ||'-06:00',
+			ifnull(t0."U_MOTIVO_NC",'')
+			into 
+			U_FIRMA_ELETRONICA,
+			IDReceptor,
+			FechaEmisionDocumentoAnular,
+			FechaHoraAnulacion,
+			U_MOTIVO_NC
+			from OPCH t0 INNER JOIN OCRD T1 ON T1."CardCode" = T0."CardCode"
+			where t0."DocEntry" =:Docentry;
+	end IF;
+
+
+SELECT ifnull("U_VALOR",'N/A') INTO Tusuario 	FROM "@FEL_PARAMETROS" WHERE "U_PARAMETRO" = 'TEKRAuser';
+SELECT ifnull("U_VALOR",'N/A') INTO Tclave 		FROM "@FEL_PARAMETROS" WHERE "U_PARAMETRO" = 'TEKRApass';
+SELECT ifnull("U_VALOR",'N/A') INTO Tcliente 	FROM "@FEL_PARAMETROS" WHERE "U_PARAMETRO" = 'Tclient';
+SELECT ifnull("U_VALOR",'N/A') INTO Tcontrato 	FROM "@FEL_PARAMETROS" WHERE "U_PARAMETRO" = 'Tbusiness';
+SELECT ifnull("U_VALOR",'N/A') INTO Twsdl	 	FROM "@FEL_PARAMETROS" WHERE "U_PARAMETRO" = 'UR_wsdl';
+
+ENCODIGN :='<?xml version="1.0" encoding="UTF-8" standalone="no"?>';
+
+DTEENCA := '';
+DTEENCA := '<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/">
+<Body>
+<CertificacionDocumento xmlns="'|| Twsdl ||'">
+<Autenticacion>
+    <pn_usuario>'|| Tusuario ||'</pn_usuario>
+    <pn_clave>'|| Tclave ||'</pn_clave>
+    <pn_cliente>'|| Tcliente ||'</pn_cliente>
+    <pn_contrato>'|| Tcontrato ||'</pn_contrato>
+    <pn_id_origen>CCC_OneSolutions</pn_id_origen>
+    <pn_ip_origen>10.0.1.8</pn_ip_origen>
+    <pn_firmar_emisor>SI</pn_firmar_emisor>
+</Autenticacion>
+<Documento>
+<![CDATA[';
+DTEENCA := DTEENCA || '<?xml version="1.0"?>
+<dte:GTAnulacionDocumento Version="0.1" xmlns:dte="http://www.sat.gob.gt/dte/fel/0.1.0" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">';
+DTEENCA := DTEENCA || '<dte:SAT>';
+DTEENCA := DTEENCA || '<dte:AnulacionDTE ID="DatosCertificados">';
+DTEENCA := DTEENCA || '<dte:DatosGenerales ID="DatosAnulacion" NumeroDocumentoAAnular="'|| :U_FIRMA_ELETRONICA ||'" NITEmisor="'|| :NIT ||'" IDReceptor="'|| :IDReceptor ||'" FechaEmisionDocumentoAnular="'|| :FechaEmisionDocumentoAnular ||'" FechaHoraAnulacion="'|| :FechaHoraAnulacion ||'" MotivoAnulacion="'|| :U_MOTIVO_NC ||'"></dte:DatosGenerales>';
+DTEENCA := DTEENCA || '</dte:AnulacionDTE>';
+DTEENCA := DTEENCA || '</dte:SAT>';
+DTEENCA := DTEENCA || '</dte:GTAnulacionDocumento>]]>
+</Documento>
+</CertificacionDocumento>
+</Body>
+</Envelope>';
+
+RESULT := ENCODIGN || DTEENCA;
+
+SELECT  RESULT FROM DUMMY;
+END;

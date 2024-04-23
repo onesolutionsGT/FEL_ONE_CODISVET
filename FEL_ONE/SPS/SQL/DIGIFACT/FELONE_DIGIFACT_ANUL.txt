@@ -1,0 +1,92 @@
+USE [InteramericanCarRental]
+GO
+
+/****** Object:  StoredProcedure [dbo].[FELONE_DIGIFACT_ANUL]    Script Date: 16/05/2022 15:39:01 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+
+
+
+
+CREATE PROCEDURE [dbo].[FELONE_DIGIFACT_ANUL] (@DOCENTRY INT,@TIPO char(9), @NIT Varchar(30))
+AS
+
+DECLARE @DTEENCA VARCHAR(MAX)
+DECLARE @RESULT AS VARCHAR(MAX)
+
+--SET @ENCODIGN='<?xml version="1.0" encoding="UTF-8" standalone="no"?>'
+
+--VARIABLES DE ENCABEZADO
+DECLARE @U_FIRMA_ELETRONICA VARCHAR(50)
+DECLARE @IDReceptor VARCHAR(50)
+DECLARE @FechaEmisionDocumentoAnular VARCHAR(50)
+DECLARE @FechaHoraAnulacion VARCHAR(50)
+DECLARE @U_MOTIVO_NC VARCHAR(50)
+
+
+--CURSORES
+
+IF @Tipo='FACT' OR @Tipo='NDEB' OR @Tipo='FCAM' OR @Tipo='RDON' OR @Tipo='FEXP'
+	BEGIN
+			Select 
+			@U_FIRMA_ELETRONICA = isnull(t0.U_NUMERO_DOCUMENTO_NC,''),
+			@IDReceptor = isnull(replace(t0.U_NIT_factura,'-',''),'CF'),
+			@FechaEmisionDocumentoAnular = isnull(t0.U_FECHA_ENVIO_FACE,''),
+			@FechaHoraAnulacion = left(convert(varchar(30),getdate(),126),19)+'-06:00',
+			@U_MOTIVO_NC = isnull('ANULADO','')
+			from OINV t0 
+			left outer join  OCRD t3
+				on t3.CardCode =t0.CardCode
+			where t0.DocEntry =@Docentry;
+END
+	IF @Tipo='NCRE' or @Tipo='NABN'
+	begin
+			Select 
+			@U_FIRMA_ELETRONICA = isnull(t0.U_FIRMA_ELETRONICA,''),
+			@IDReceptor = isnull(replace(T3.AddID,'-',''),'CF'),
+			@FechaEmisionDocumentoAnular = isnull(t0.U_FECHA_ENVIO_FACE,''),
+			@FechaHoraAnulacion = left(convert(varchar(30),getdate(),126),19)+'-06:00',
+			@U_MOTIVO_NC = isnull(t0.U_MOTIVO_NC,'')
+			from ORIN t0 
+			left outer join  OCRD t3
+				on t3.CardCode =t0.CardCode
+			where t0.DocEntry =@Docentry;
+	end
+
+	IF @Tipo='FESP' 
+	begin
+			Select 
+			@U_FIRMA_ELETRONICA = isnull(t0.U_NUMERO_DOCUMENTO_NC,''),
+			@IDReceptor = 	isnull(T3.AddID,''),
+			@FechaEmisionDocumentoAnular = isnull(t0.U_FECHA_NC,''),
+			@FechaHoraAnulacion = left(convert(varchar(30),getdate(),126),19)+'-06:00',
+			@U_MOTIVO_NC = isnull(t0.U_MOTIVO_NC,'')
+			from opch t0 
+			INNER join ocrd t3 on t3.CardCode = t0.CardCode
+			where t0.DocEntry =@Docentry;
+	end
+
+
+--ENCABEZADO
+SET @DTEENCA=''
+Set @DTEENCA=@DTEENCA+'<?xml version="1.0" encoding="utf-8"?>'
+Set @DTEENCA=@DTEENCA+'<dte:GTAnulacionDocumento xmlns:dte="http://www.sat.gob.gt/dte/fel/0.1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Version="0.1">'
+Set @DTEENCA=@DTEENCA+'<dte:SAT>'
+Set @DTEENCA=@DTEENCA+'<dte:AnulacionDTE ID="DatosCertificados">'
+Set @DTEENCA=@DTEENCA+'    <dte:DatosGenerales ID="DatosAnulacion" NumeroDocumentoAAnular="'+ @U_FIRMA_ELETRONICA +'" NITEmisor="'+ @NIT +'"'
+Set @DTEENCA=@DTEENCA+'        IDReceptor="'+ @IDReceptor +'" FechaEmisionDocumentoAnular="'+ @FechaEmisionDocumentoAnular +'" FechaHoraAnulacion="'+ @FechaHoraAnulacion +'"'
+Set @DTEENCA=@DTEENCA+'        MotivoAnulacion="'+ @U_MOTIVO_NC +'"/>'
+Set @DTEENCA=@DTEENCA+'</dte:AnulacionDTE>'
+Set @DTEENCA=@DTEENCA+'</dte:SAT>'
+Set @DTEENCA=@DTEENCA+'</dte:GTAnulacionDocumento>'
+
+SET @RESULT=@DTEENCA
+
+SELECT  @RESULT XML_GENERADO
+GO
+

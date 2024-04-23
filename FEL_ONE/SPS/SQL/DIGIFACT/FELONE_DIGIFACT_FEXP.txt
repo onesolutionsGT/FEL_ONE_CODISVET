@@ -1,0 +1,374 @@
+USE [InteramericanCarRental]
+GO
+
+/****** Object:  StoredProcedure [dbo].[FELONE_DIGIFACT_FEXP]    Script Date: 16/05/2022 15:39:58 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+
+
+CREATE PROCEDURE [dbo].[FELONE_DIGIFACT_FEXP] (@DOCENTRY INT,@DECIMAL INT)
+AS
+
+DECLARE @MyCursorENC CURSOR 
+DECLARE @MyCursorDET CURSOR
+DECLARE @DTEENCA VARCHAR(MAX)
+DECLARE @DTEDETA VARCHAR(MAX)
+DECLARE @DTECOMPLEMENTO VARCHAR(MAX)
+DECLARE @DTEADENDA VARCHAR(MAX)
+DECLARE @RESULT AS VARCHAR(MAX)
+DECLARE @ENCODIGN AS VARCHAR(MAX)
+DECLARE @Incoterm AS VARCHAR(MAX)
+
+SET @ENCODIGN='<?xml version="1.0" encoding="UTF-8" standalone="no"?>'
+
+--VARIABLES DE ENCABEZADO
+DECLARE @CodigoMoneda VARCHAR(20)
+DECLARE @FechaHoraEmision VARCHAR(50)
+DECLARE @Tipo VARCHAR(4)
+DECLARE @AfiliacionIVA VARCHAR(50)
+DECLARE @CodigoEstablecimiento VARCHAR(20)
+DECLARE @NITEmisor VARCHAR(20)
+DECLARE @NombreComercial VARCHAR(150)
+DECLARE @NombreEmisor VARCHAR(150)
+DECLARE @CorreoEmisor VARCHAR(150)
+DECLARE @EDireccion VARCHAR(100)
+DECLARE @ECodigoPostal VARCHAR(20)
+DECLARE @EMunicipio VARCHAR(100)
+DECLARE @EDepartamento VARCHAR(100)
+DECLARE @EPais VARCHAR(15)
+DECLARE @IDReceptor VARCHAR(15)
+DECLARE @NombreReceptor VARCHAR(500)
+DECLARE @CorreoReceptor VARCHAR(150)
+DECLARE @RDireccion VARCHAR(100)
+DECLARE @RCodigoPostal VARCHAR(20)
+DECLARE @RMunicipio VARCHAR(100)
+DECLARE @RDepartamento VARCHAR(100)
+DECLARE @RPais VARCHAR(15)
+DECLARE @validar VARCHAR(25)
+
+----------------IMPUESTOS-------------------
+DECLARE @TINombreCorto VARCHAR(10)
+DECLARE @TITotalMontoImpuesto numeric(19,6)
+DECLARE @GranTotal numeric(19,6)
+DECLARE @BienOServicio VARCHAR(15)
+-----------------TOTALES-------------------
+DECLARE @TotalFinal VARCHAR(100)
+DECLARE @Ivatotal VARCHAR(100)
+
+--VARIABLES DE ADENDA
+DECLARE @Adendaid VARCHAR(10)
+DECLARE @Valor1 VARCHAR(20)
+DECLARE @Valor2 VARCHAR(20)
+DECLARE @Valor3 VARCHAR(20)
+DECLARE @Valor4 VARCHAR(20)
+DECLARE @Valor5 VARCHAR(20)
+DECLARE @Valor6 VARCHAR(20)
+
+
+--VARIABLES DE DETALLE
+DECLARE @NumeroLinea VARCHAR(10)
+DECLARE @Cantidad numeric(19,6)
+DECLARE @UnidadMedida VARCHAR(500)
+DECLARE @Descripcion VARCHAR(MAX)
+DECLARE @PrecioUnitario numeric(19,6)
+DECLARE	@Precio numeric(19,6)
+DECLARE @Descuento numeric(19,6)--VARCHAR(10)
+DECLARE @INombreCorto VARCHAR(15)
+DECLARE @ICodigoUnidadGravable VARCHAR(500)
+DECLARE @IMontoGravable numeric(19,6)
+DECLARE @IMontoImpuesto numeric(19,6)
+DECLARE @Total numeric(19,6)
+
+--CURSORES
+
+EXEC FELONE_DIGIFACT_ENCABEZADO @DOCENTRY,'FEXP',@CursorENC = @MyCursorENC OUTPUT;
+	--SELECT @@CURSOR_ROWS;
+EXEC FELONE_DIGIFACT_DETALLE @DOCENTRY,'FEXP',@CursorDET = @MyCursorDET OUTPUT;
+	--SELECT @@CURSOR_ROWS;
+
+FETCH NEXT FROM @MyCursorENC INTO
+@CodigoMoneda,
+@FechaHoraEmision,
+@Tipo,
+@AfiliacionIVA,
+@CodigoEstablecimiento,
+@NITEmisor,
+@NombreComercial,
+@NombreEmisor,
+@CorreoEmisor,
+@EDireccion,
+@ECodigoPostal,
+@EMunicipio,
+@EDepartamento,
+@EPais,
+@IDReceptor,
+@NombreReceptor,
+@CorreoReceptor,
+@RDireccion,
+@RCodigoPostal,
+@RMunicipio,
+@RDepartamento,
+@RPais,
+@TINombreCorto,
+@TITotalMontoImpuesto,
+@GranTotal,
+@BienOServicio,
+@Adendaid,
+@validar,
+@Valor1,
+@Valor2,
+@Valor3,
+@Valor4,
+@Valor5,
+@Valor6
+
+WHILE @@FETCH_STATUS = 0
+	BEGIN;
+		FETCH NEXT FROM @MyCursorENC INTO
+	
+		@CodigoMoneda,
+@FechaHoraEmision,
+@Tipo,
+@AfiliacionIVA,
+@CodigoEstablecimiento,
+@NITEmisor,
+@NombreComercial,
+@NombreEmisor,
+@CorreoEmisor,
+@EDireccion,
+@ECodigoPostal,
+@EMunicipio,
+@EDepartamento,
+@EPais,
+@IDReceptor,
+@NombreReceptor,
+@CorreoReceptor,
+@RDireccion,
+@RCodigoPostal,
+@RMunicipio,
+@RDepartamento,
+@RPais,
+@TINombreCorto,
+@TITotalMontoImpuesto,
+@GranTotal,
+@BienOServicio,
+@Adendaid,
+@validar,
+@Valor1,
+@Valor2,
+@Valor3,
+@Valor4,
+@Valor5,
+@Valor6;
+END;
+--SELECT @@CURSOR_ROWS;
+
+CLOSE @MyCursorENC;
+DEALLOCATE @MyCursorENC;
+
+--ENCABEZADO
+SET @DTEENCA=''
+set @DTEENCA ='    <dte:GTDocumento Version="0.1" xmlns:dte="http://www.sat.gob.gt/dte/fel/0.2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'
+SET @DTEENCA=@DTEENCA+'<dte:SAT ClaseDocumento="dte">'
+SET @DTEENCA=@DTEENCA+'<dte:DTE ID="DatosCertificados">'
+SET @DTEENCA=@DTEENCA+'<dte:DatosEmision ID="DatosEmision">'
+SET @DTEENCA=@DTEENCA+'<dte:DatosGenerales CodigoMoneda="'+ @CodigoMoneda +'" FechaHoraEmision="'+@FechaHoraEmision+'" Tipo="FACT" Exp="SI"></dte:DatosGenerales>'
+SET @DTEENCA=@DTEENCA+'<dte:Emisor AfiliacionIVA="'+@AfiliacionIVA+'" CodigoEstablecimiento="'+@CodigoEstablecimiento+'" CorreoEmisor="'+@CorreoEmisor+'" NITEmisor="'+@NITEmisor+'" NombreComercial="'+@NombreComercial+'" NombreEmisor="'+@NombreEmisor+'">'
+SET @DTEENCA=@DTEENCA+'<dte:DireccionEmisor>'
+SET @DTEENCA=@DTEENCA+'<dte:Direccion>'+@EDireccion+'</dte:Direccion>'
+SET @DTEENCA=@DTEENCA+'<dte:CodigoPostal>'+@ECodigoPostal+'</dte:CodigoPostal>'
+SET @DTEENCA=@DTEENCA+'<dte:Municipio>'+@EMunicipio+'</dte:Municipio>'
+SET @DTEENCA=@DTEENCA+'<dte:Departamento>'+@EDepartamento+'</dte:Departamento>'
+SET @DTEENCA=@DTEENCA+'<dte:Pais>'+@EPais+'</dte:Pais>'
+SET @DTEENCA=@DTEENCA+'</dte:DireccionEmisor>'
+SET @DTEENCA=@DTEENCA+'</dte:Emisor>'
+SET @DTEENCA=@DTEENCA+'<dte:Receptor IDReceptor="'+@IDReceptor+'" NombreReceptor="'+@NombreReceptor+'" CorreoReceptor="'+@CorreoReceptor+'">'
+SET @DTEENCA=@DTEENCA+'<dte:DireccionReceptor>'
+SET @DTEENCA=@DTEENCA+'<dte:Direccion>'+@RDireccion+'</dte:Direccion>'
+SET @DTEENCA=@DTEENCA+'<dte:CodigoPostal>'+@RCodigoPostal+'</dte:CodigoPostal>'
+SET @DTEENCA=@DTEENCA+'<dte:Municipio>'+@RMunicipio+'</dte:Municipio>'
+SET @DTEENCA=@DTEENCA+'<dte:Departamento>'+@RDepartamento+'</dte:Departamento>'
+SET @DTEENCA=@DTEENCA+'<dte:Pais>'+@RPais+'</dte:Pais>'
+SET @DTEENCA=@DTEENCA+'</dte:DireccionReceptor>'
+SET @DTEENCA=@DTEENCA+'</dte:Receptor>'
+
+
+--DETALLE
+
+FETCH NEXT FROM @MyCursorDET 
+INTO
+@Cantidad,
+@UnidadMedida,
+@Descripcion,
+@PrecioUnitario,
+@Precio,
+@Descuento,
+@INombreCorto,
+@ICodigoUnidadGravable,
+@IMontoGravable,
+@IMontoImpuesto,
+@Total;
+
+IF @ICodigoUnidadGravable = 1 
+    BEGIN
+	--FRASES
+      SET @DTEENCA=@DTEENCA+'<dte:Frases>'
+      SET @DTEENCA=@DTEENCA+'<dte:Frase CodigoEscenario="1" TipoFrase="1"></dte:Frase>'
+      --SET @DTEENCA=@DTEENCA+'<dte:Frase CodigoEscenario="10" TipoFrase="4"></dte:Frase>'
+      --SET @DTEENCA=@DTEENCA+'<dte:Frase CodigoEscenario="6" TipoFrase="1"></dte:Frase>'
+      SET @DTEENCA=@DTEENCA+'</dte:Frases>'
+	END
+    ELSE
+	BEGIN
+      --FRASES
+      SET @DTEENCA=@DTEENCA+'<dte:Frases>'
+      SET @DTEENCA=@DTEENCA+'<dte:Frase CodigoEscenario="1" TipoFrase="1"></dte:Frase>'
+      SET @DTEENCA=@DTEENCA+'<dte:Frase CodigoEscenario="1" TipoFrase="4"></dte:Frase>'
+      --SET @DTEENCA=@DTEENCA+'<dte:Frase CodigoEscenario="6" TipoFrase="1"></dte:Frase>'
+      SET @DTEENCA=@DTEENCA+'</dte:Frases>'
+    END 
+
+
+SET @DTEDETA='<dte:Items>'
+set @NumeroLinea = 1
+set @Ivatotal = 0
+set @TotalFinal = 0
+WHILE @@FETCH_STATUS = 0
+	BEGIN;
+if @Descuento < 0 
+			begin
+			SET @Descuento = 0
+			end
+
+		SET @DTEDETA=@DTEDETA+'<dte:Item BienOServicio="'+@BienOServicio+'" NumeroLinea="'+@NumeroLinea+'">'
+		if @BienOServicio = 'S' and @Cantidad = 0  begin
+		SET @DTEDETA=@DTEDETA+'<dte:Cantidad>1</dte:Cantidad>'
+		end
+		if @BienOServicio = 'B' begin
+		SET @DTEDETA=@DTEDETA+'<dte:Cantidad>'+convert(nvarchar(50),@Cantidad)+'</dte:Cantidad>'
+		end
+		SET @DTEDETA=@DTEDETA+'<dte:UnidadMedida>'+@UnidadMedida+'</dte:UnidadMedida>'
+		SET @DTEDETA=@DTEDETA+'<dte:Descripcion>'+REPLACE(@Descripcion,'&','&amp;')+'</dte:Descripcion>'
+		--SET @DTEDETA=@DTEDETA+'<dte:Descripcion>'+convert(nvarchar(MAX),@Descripcion)+'</dte:Descripcion>'
+		SET @DTEDETA=@DTEDETA+'<dte:PrecioUnitario>'+convert(nvarchar(50),@PrecioUnitario)+'</dte:PrecioUnitario>'
+		SET @DTEDETA=@DTEDETA+'<dte:Precio>'+convert(nvarchar(50),@Precio)+'</dte:Precio>'
+		SET @DTEDETA=@DTEDETA+'<dte:Descuento>'+convert(nvarchar(50),ABS (@Descuento))+'</dte:Descuento>'
+		SET @DTEDETA=@DTEDETA+'<dte:Impuestos>'
+		SET @DTEDETA=@DTEDETA+'<dte:Impuesto>'
+		SET @DTEDETA=@DTEDETA+'<dte:NombreCorto>'+@INombreCorto+'</dte:NombreCorto>'
+		SET @DTEDETA=@DTEDETA+'<dte:CodigoUnidadGravable>'+@ICodigoUnidadGravable+'</dte:CodigoUnidadGravable>'
+		SET @DTEDETA=@DTEDETA+'<dte:MontoGravable>'+convert(nvarchar(50),(@IMontoGravable))+'</dte:MontoGravable>'
+		SET @DTEDETA=@DTEDETA+'<dte:MontoImpuesto>'+convert(nvarchar(50),@IMontoImpuesto)+'</dte:MontoImpuesto>'
+
+		SET @DTEDETA=@DTEDETA+'</dte:Impuesto>'
+		SET @DTEDETA=@DTEDETA+'</dte:Impuestos>'
+		SET @DTEDETA=@DTEDETA+'<dte:Total>'+convert(nvarchar(50),@Total)+'</dte:Total>'
+		SET @DTEDETA=@DTEDETA+'</dte:Item>'
+		--SET @DTEDETA=@DTEDETA+''
+		set @NumeroLinea = @NumeroLinea + 1
+		set @Ivatotal = @Ivatotal + @IMontoImpuesto
+		set @TotalFinal = @TotalFinal + @Total
+
+		FETCH NEXT FROM @MyCursorDET INTO
+		
+		@Cantidad,
+		@UnidadMedida,
+		@Descripcion,
+		@PrecioUnitario,
+		@Precio,
+		@Descuento,
+		@INombreCorto,
+		@ICodigoUnidadGravable,
+		@IMontoGravable,
+		@IMontoImpuesto,
+		@Total;
+		
+
+	END
+SET @DTEDETA=@DTEDETA+'</dte:Items>'
+CLOSE @MyCursorDET;
+DEALLOCATE @MyCursorDET; 
+SET @DTEENCA =@DTEENCA+@DTEDETA
+--CONTINUA ENCABEZADO
+
+
+--------------------------------------------------CALCULOS DE TOTALES---------------------------------------------------------
+
+
+
+------------------------------------------------------------------------------------------------------------------------------
+SET @DTEENCA=@DTEENCA+'<dte:Totales>'
+SET @DTEENCA=@DTEENCA+'<dte:TotalImpuestos>'
+SET @DTEENCA=@DTEENCA+'<dte:TotalImpuesto NombreCorto="IVA" TotalMontoImpuesto="'+convert(nvarchar(20),@ivatotal)+'"></dte:TotalImpuesto>'
+SET @DTEENCA=@DTEENCA+'</dte:TotalImpuestos>'
+SET @DTEENCA=@DTEENCA+'<dte:GranTotal>'+convert(nvarchar(20),@TotalFinal)+'</dte:GranTotal>'
+SET @DTEENCA=@DTEENCA+'</dte:Totales>'
+
+--------------------------------------------------COMPLEMENTOS FACTURA----------------------------------------------------------
+
+	select @Incoterm= U_INCOTERM
+	from OINV  T0
+	where DocEntry =@DOCENTRY;
+
+SET @DTEENCA=@DTEENCA+'<dte:Complementos>'
+SET @DTEENCA=@DTEENCA+'<dte:Complemento NombreComplemento="Exportación" URIComplemento="http://www.sat.gob.gt/face2/ComplementoExportaciones/0.1.0">'
+SET @DTEENCA=@DTEENCA+'<cex:Exportacion xmlns:cex="http://www.sat.gob.gt/face2/ComplementoExportaciones/0.1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sat.gob.gt/face2/ComplementoExportaciones/0.1.0 file:/C:/Users/William/Documents/PROYECTOS/FACE2/XSD/GT_Complemento_Exportaciones-0.1.0.xsd" Version="1">'
+SET @DTEENCA=@DTEENCA+'<cex:NombreConsignatarioODestinatario>'+convert(nvarchar(20),@NombreReceptor)+'</cex:NombreConsignatarioODestinatario>'
+SET @DTEENCA=@DTEENCA+'<cex:DireccionConsignatarioODestinatario>'+convert(nvarchar(20),@RDireccion)+'</cex:DireccionConsignatarioODestinatario>'
+SET @DTEENCA=@DTEENCA+'<cex:INCOTERM>'+@Incoterm+'</cex:INCOTERM>'
+SET @DTEENCA=@DTEENCA+'</cex:Exportacion>'
+SET @DTEENCA=@DTEENCA+'</dte:Complemento>'
+SET @DTEENCA=@DTEENCA+'</dte:Complementos>'
+
+
+--------------------------------------------------FINAL DE DOCUMENTO----------------------------------------------------------
+
+SET @DTEENCA=@DTEENCA+'</dte:DatosEmision>'
+SET @DTEENCA=@DTEENCA+'</dte:DTE>'
+
+--ADENDAS
+
+SET @DTEENCA=@DTEENCA+'<dte:Adenda> '
+SET @DTEENCA=@DTEENCA+'<dtecomm:Informacion_COMERCIAL xsi:schemaLocation="https://www.digifact.com.gt/dtecomm" xmlns:dtecomm="https://www.digifact.com.gt/dtecomm">'
+SET @DTEENCA=@DTEENCA+'<dtecomm:InformacionAdicional Version="2020_06_01">'
+SET @DTEENCA=@DTEENCA+'<dtecomm:REFERENCIA_INTERNA>FEXP'+convert(nvarchar(20),@DOCENTRY)+'</dtecomm:REFERENCIA_INTERNA>'
+SET @DTEENCA=@DTEENCA+'<dtecomm:FECHA_REFERENCIA>'+convert(nvarchar(30),@FechaHoraEmision)+'</dtecomm:FECHA_REFERENCIA>'
+SET @DTEENCA=@DTEENCA+'<dtecomm:VALIDAR_REFERENCIA_INTERNA>'+@validar+'</dtecomm:VALIDAR_REFERENCIA_INTERNA>'
+SET @DTEENCA=@DTEENCA+'<dtecomm:INFORMACION_ADICIONAL>'
+SET @DTEENCA=@DTEENCA+'<dtecomm:Detalle Data="CODUSUARIO" Value="'+@Valor2+'" />'
+SET @DTEENCA=@DTEENCA+'<dtecomm:Detalle Data="SERIE_INTER" Value="'+@Valor4+'" />'
+SET @DTEENCA=@DTEENCA+'<dtecomm:Detalle Data="CORRELATIVOINT" Value="'+@Valor6+'" />'
+SET @DTEENCA=@DTEENCA+'</dtecomm:INFORMACION_ADICIONAL>'
+--SET @DTEENCA=@DTEENCA+'<dtecomm:Detalles_Auxiliares>'
+--SET @DTEENCA=@DTEENCA+'<dtecomm:Detalle>'
+--SET @DTEENCA=@DTEENCA+'<dtecomm:NumeroLinea>4</dtecomm:NumeroLinea>'
+--SET @DTEENCA=@DTEENCA+'<dtecomm:Descripcion_Adicional>CODIGO</dtecomm:Descripcion_Adicional>'
+--SET @DTEENCA=@DTEENCA+'<dtecomm:CodigoEAN>02551870000006</dtecomm:CodigoEAN>'
+--SET @DTEENCA=@DTEENCA+'<dtecomm:CategoriaAdicional/>'
+--SET @DTEENCA=@DTEENCA+'<dtecomm:Textos>'
+--SET @DTEENCA=@DTEENCA+'<dtecomm:Texto>VC12URREA</dtecomm:Texto>'
+--SET @DTEENCA=@DTEENCA+'</dtecomm:Textos>'
+--SET @DTEENCA=@DTEENCA+'</dtecomm:Detalle>    '
+--SET @DTEENCA=@DTEENCA+'</dtecomm:Detalles_Auxiliares>'
+SET @DTEENCA=@DTEENCA+'</dtecomm:InformacionAdicional>'
+SET @DTEENCA=@DTEENCA+'</dtecomm:Informacion_COMERCIAL>'
+SET @DTEENCA=@DTEENCA+'</dte:Adenda>'
+SET @DTEENCA=@DTEENCA+'</dte:SAT>'
+SET @DTEENCA=@DTEENCA+'</dte:GTDocumento>'
+--SET @DTEENCA=@DTEENCA+''
+
+SET @RESULT=@ENCODIGN+@DTEENCA
+
+SELECT  @RESULT XML_GENERADO
+
+--DEBUG
+--SELECT @RESULT XML_GENERADO, @ROOT ROOT ,@HEADER HEADER ,@DETAIL DETAIL ,@FOOTER FOOTER,@ENDROOT ENDROOT
+
+
+GO
+
