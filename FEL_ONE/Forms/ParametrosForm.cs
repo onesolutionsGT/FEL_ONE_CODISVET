@@ -285,6 +285,9 @@ namespace FEL_ONE.Forms
                 oGrid.Columns.Item(9).Width = 100;  // departamento
                 oGrid.Columns.Item(10).Width = 100; // pais
                 oGrid.Columns.Item(11).Width = 100; // codpostal
+                oGrid.Columns.Item(13).Width = 100; // IMPRIME SERIE DIRECTAMENTE
+                oGrid.Columns.Item(14).Width = 100; // IMPRIME SERIE DIRECTAMENTE
+                oGrid.Columns.Item(13).Type = SAPbouiCOM.BoGridColumnType.gct_CheckBox;
                 oGrid.Columns.Item(4).Type = SAPbouiCOM.BoGridColumnType.gct_ComboBox;
                 oGrid.Columns.Item(5).Type = SAPbouiCOM.BoGridColumnType.gct_CheckBox;
 
@@ -537,6 +540,8 @@ namespace FEL_ONE.Forms
             string Direccion;
             string Municipio;
             string Departamento;
+            string impresora;
+            string imprimePdf;
             try
             {
                 oItem = oForm.Items.Item("grdDatos");
@@ -556,6 +561,8 @@ namespace FEL_ONE.Forms
                         Pais = oGrid.DataTable.GetValue(oGrid.DataTable.Columns.Item(10).Name, i);
                         CodP = oGrid.DataTable.GetValue(oGrid.DataTable.Columns.Item(11).Name, i);
                         NombreComercial = oGrid.DataTable.GetValue(oGrid.DataTable.Columns.Item(12).Name, i);
+                        imprimePdf = oGrid.DataTable.GetValue(oGrid.DataTable.Columns.Item(13).Name, i);
+                        impresora = oGrid.DataTable.GetValue(oGrid.DataTable.Columns.Item(14).Name, i);
 
                         if (esFACe == "Y")
                         {
@@ -597,6 +604,8 @@ namespace FEL_ONE.Forms
                         Pais = oGrid.DataTable.GetValue(oGrid.DataTable.Columns.Item(10).Name, i);
                         CodP = oGrid.DataTable.GetValue(oGrid.DataTable.Columns.Item(11).Name, i);
                         NombreComercial = oGrid.DataTable.GetValue(oGrid.DataTable.Columns.Item(12).Name, i);
+                        //imprimePdf = oGrid.DataTable.GetValue(oGrid.DataTable.Columns.Item(13).Name, i);
+                        impresora = oGrid.DataTable.GetValue(oGrid.DataTable.Columns.Item(14).Name, i);
 
                         if (oGrid.DataTable.GetValue(oGrid.DataTable.Columns.Item(5).Name, i) == "0" | oGrid.DataTable.GetValue(oGrid.DataTable.Columns.Item(5).Name, i) == "N")
                         {
@@ -606,13 +615,23 @@ namespace FEL_ONE.Forms
                         {
                             EsBatch = "'" + oGrid.DataTable.GetValue(oGrid.DataTable.Columns.Item(5).Name, i) + "'";
                         }
-                        if (oCompany.DbServerType == SAPbobsCOM.BoDataServerTypes.dst_HANADB)
+
+                        if (oGrid.DataTable.GetValue(oGrid.DataTable.Columns.Item(13).Name, i) == "0" | oGrid.DataTable.GetValue(oGrid.DataTable.Columns.Item(13).Name, i) == "N")
                         {
-                            Sql = "insert into \"@FEL_RESOLUCION\" (\"Code\",\"LineId\",\"Object\",\"LogInst\",\"U_SERIE\",\"U_TIPO_DOC\",\"U_ES_BATCH\",\"U_DISPOSITIVO\",\"U_DIR\",\"U_MUNI\",\"U_DEPTO\",\"U_PAIS\",\"U_CODP\",\"U_NOMBRECOMERCIAL\") " + "values ('" + serie + "'," + serie + ",null,null,'" + serie + "','" + TipoDoc + "'," + EsBatch + ",'" + Dispositivo + "','" + Direccion + "','" + Municipio + "','" + Departamento + "','" + Pais + "','" + CodP + "','" + NombreComercial + "')";
+                            imprimePdf = "0";
                         }
                         else
                         {
-                            Sql = "insert into [@FEL_RESOLUCION] (Code,LineId,Object,LogInst,U_SERIE,U_TIPO_DOC,U_ES_BATCH,U_DISPOSITIVO,U_DIR,U_MUNI,U_DEPTO,U_PAIS,U_CODP,U_NOMBRECOMERCIAL) " + "values ('" + serie + "'," + serie + ",null,null,'" + serie + "','" + TipoDoc + "'," + EsBatch + ",'" + Dispositivo + "','" + Direccion + "','" + Municipio + "','" + Departamento + "','" + Pais + "','" + CodP + "','" + NombreComercial + "')";
+                            imprimePdf = "1";
+                        }
+
+                        if (oCompany.DbServerType == SAPbobsCOM.BoDataServerTypes.dst_HANADB)
+                        {
+                            Sql = "insert into \"@FEL_RESOLUCION\" (\"Code\",\"LineId\",\"Object\",\"LogInst\",\"U_SERIE\",\"U_TIPO_DOC\",\"U_ES_BATCH\",\"U_DISPOSITIVO\",\"U_DIR\",\"U_MUNI\",\"U_DEPTO\",\"U_PAIS\",\"U_CODP\",\"U_NOMBRECOMERCIAL\",\"U_IMPRIME_PDF\",\"U_IMPRESORA\") " + "values ('" + serie + "'," + serie + ",null,null,'" + serie + "','" + TipoDoc + "'," + EsBatch + ",'" + Dispositivo + "','" + Direccion + "','" + Municipio + "','" + Departamento + "','" + Pais + "','" + CodP + "','" + NombreComercial + "'," + imprimePdf + ",'" + impresora + "')";
+                        }
+                        else
+                        {
+                            Sql = "insert into [@FEL_RESOLUCION] (Code,LineId,Object,LogInst,U_SERIE,U_TIPO_DOC,U_ES_BATCH,U_DISPOSITIVO,U_DIR,U_MUNI,U_DEPTO,U_PAIS,U_CODP,U_NOMBRECOMERCIAL,U_IMPRIME_PDF,U_IMPRESORA) " + "values ('" + serie + "'," + serie + ",null,null,'" + serie + "','" + TipoDoc + "'," + EsBatch + ",'" + Dispositivo + "','" + Direccion + "','" + Municipio + "','" + Departamento + "','" + Pais + "','" + CodP + "','" + NombreComercial + "'," + imprimePdf + ",'" + impresora + "')";
                         }
                         RecSet = oCompany.GetBusinessObject(SAPbobsCOM.BoObjectTypes.BoRecordset);
                         RecSet.DoQuery(Sql);

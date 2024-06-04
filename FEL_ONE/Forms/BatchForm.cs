@@ -354,7 +354,7 @@ namespace FEL_ONE.Forms
                     certificador = Utils.getCertificador();
 
                     string pais = "Guatemala";
-
+                    
                     try
                     {
                         for (var i = 0; i <= oGrid.Rows.Count - 1; i++)
@@ -365,7 +365,7 @@ namespace FEL_ONE.Forms
                                     Megaprint.EnviaDocumentoFEL(oCompany, SBO_Application, Tipo, Serie, oGrid.DataTable.GetValue(oGrid.DataTable.Columns.Item(1).Name, i).ToString(), SerieName, oGrid.DataTable.GetValue(oGrid.DataTable.Columns.Item(5).Name, i).ToString(), true);
                                     break;
                                 case Utils.TipoFEL.INFILE:
-                                    Infile.EnviaDocumentoFEL(oCompany, SBO_Application, Tipo, Serie, oGrid.DataTable.GetValue(oGrid.DataTable.Columns.Item(1).Name, i).ToString(), SerieName, oGrid.DataTable.GetValue(oGrid.DataTable.Columns.Item(5).Name, i).ToString(), true);
+                                    new Infile().EnviaDocumentoFEL(oCompany, "", SBO_Application, Tipo, Serie, oGrid.DataTable.GetValue(oGrid.DataTable.Columns.Item(1).Name, i).ToString(), SerieName, oGrid.DataTable.GetValue(oGrid.DataTable.Columns.Item(5).Name, i).ToString(), true);
                                     break;
                                 case Utils.TipoFEL.G4S:
                                     G4s.EnviaDocumentoFEL(oCompany, SBO_Application, Tipo, Serie, oGrid.DataTable.GetValue(oGrid.DataTable.Columns.Item(1).Name, i).ToString(), SerieName, pais, oGrid.DataTable.GetValue(oGrid.DataTable.Columns.Item(5).Name, i).ToString(), true);

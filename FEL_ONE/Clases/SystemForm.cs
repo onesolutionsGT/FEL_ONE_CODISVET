@@ -19,6 +19,8 @@ using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
+//using RawPrint;
+using PdfiumViewer;
 
 namespace FEL_ONE.Clases
 {
@@ -54,7 +56,7 @@ namespace FEL_ONE.Clases
             try
             {
                 SetApplication();
-                SBO_Application.StatusBar.SetText("Iniciando add-on facturaci\x00f3n electr\x00f3nica (FEL ONE standard version)...", BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Success);
+                SBO_Application.StatusBar.SetText("Iniciando add-on facturaci\x00f3n electr\x00f3nica (FEL ONE standard CODISVET version)...", BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Success);
 
                 Utils.SBOApplication = SBO_Application;
                 Utils.Company = oCompany;
@@ -186,7 +188,7 @@ namespace FEL_ONE.Clases
                         {
                             if (status == null)
                             {
-                                Utils.EnviaDocumento(oCompany, SBO_Application, tipoDoc, Serie.Selected.Value, DocNum, DocEntry[0].InnerText, Serie.Selected.Description, "GT", true);
+                                Utils.EnviaDocumento(oCompany, tabla, SBO_Application, tipoDoc, Serie.Selected.Value, DocNum, DocEntry[0].InnerText, Serie.Selected.Description, "GT", true);
                             }
                             else
                             {
@@ -196,14 +198,16 @@ namespace FEL_ONE.Clases
                                 }
                                 else
                                 {
-                                    Utils.EnviaDocumento(oCompany, SBO_Application, tipoDoc, Serie.Selected.Value, DocNum, DocEntry[0].InnerText, Serie.Selected.Description, "GT", true);
+                                    Utils.EnviaDocumento(oCompany, tabla, SBO_Application, tipoDoc, Serie.Selected.Value, DocNum, DocEntry[0].InnerText, Serie.Selected.Description, "GT", true);
                                 }
                             }
                         }
                     }
                 }
             }
-            catch { }
+            catch(Exception ex) {
+            
+            }
         }
 
         private void SBOApp_ItemEvent(string FormUID, ref ItemEvent pVal, out bool BubbleEvent)
@@ -238,6 +242,18 @@ namespace FEL_ONE.Clases
                         oItem2.Height = oItem.Height;
                         oButton2 = oItem2.Specific;
                         oButton2.Caption = "Consultar NIT";
+
+                        SAPbouiCOM.Item oItem4;
+                        SAPbouiCOM.Button oButton3;
+                        oItem4 = oForm.Items.Add("BtnImprime", SAPbouiCOM.BoFormItemTypes.it_BUTTON);
+
+                        SAPbouiCOM.Item oItem5 = oForm.Items.Item("16");
+                        oItem4.Top = oItem5.Top + (oItem5.Height - oItem.Height) - oItem2.Height - 1;
+                        oItem4.Left = oItem5.Left + oItem5.Width + 6;
+                        oItem4.Width = 100;
+                        oItem4.Height = oItem.Height;
+                        oButton3 = oItem4.Specific;
+                        oButton3.Caption = "Imprime PDF FEL";
                     }
                     if (pVal.EventType == SAPbouiCOM.BoEventTypes.et_CLICK && pVal.BeforeAction == true && pVal.ItemUID == "PdfFEL")
                     {
@@ -310,6 +326,170 @@ namespace FEL_ONE.Clases
                                 catch (Exception)
                                 {
                                     SBO_Application.MessageBox("No es posible ubicar los campos de NIT y NOMBRE");
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            SBO_Application.MessageBox(ex.Message);
+                        }
+                    }
+
+                    if (pVal.EventType == SAPbouiCOM.BoEventTypes.et_CLICK && pVal.BeforeAction == true && pVal.ItemUID == "BtnImprime")
+                    {
+                        try
+                        {
+                            SAPbouiCOM.Form oFormLink;
+                            oFormLink = SBO_Application.Forms.ActiveForm;
+                            if (oFormLink.Mode == SAPbouiCOM.BoFormMode.fm_OK_MODE)
+                            {
+                                //SAPbouiCOM.Form oFormLink;
+                                string LinkPDFINFILE = Utils.ObtieneValorParametro(oCompany, SBO_Application, "UR_p");
+                                string dirXMLPDF = Utils.ObtieneValorParametro(oCompany, SBO_Application, "PATHPDF");
+                                SAPbouiCOM.Form FormLink = SBO_Application.Forms.Item(SBO_Application.Forms.ActiveForm.UDFFormUID);
+                                SAPbouiCOM.EditText oEditFirma = (SAPbouiCOM.EditText)FormLink.Items.Item("U_FIRMA_ELETRONICA").Specific;
+                                string url = LinkPDFINFILE;
+
+                                if (!string.IsNullOrEmpty(url))
+                                {
+                                    string firmax = oEditFirma.Value;
+                                    String tabla = "";
+                                    SAPbouiCOM.ComboBox Serie;
+                                    Serie = (SAPbouiCOM.ComboBox)oFormLink.Items.Item("88").Specific;
+                                    string CurrSerie = Serie.Selected.Value;
+                                    SAPbouiCOM.EditText cardText = (SAPbouiCOM.EditText)oFormLink.Items.Item("4").Specific;
+                                    string cardCode = cardText.Value;
+
+                                    SAPbouiCOM.EditText DocNumO = (SAPbouiCOM.EditText)oFormLink.Items.Item("8").Specific;
+                                    string DocNum = DocNumO.Value;
+
+                                    switch (pVal.FormType)
+                                    {
+                                        case 133:     // FACTURA
+                                            tabla = "OINV"; break;
+                                        case 65300:   // FACTURA ANTICIPO
+                                            tabla = "ODPI"; break;
+                                        case 60090:   // FACTURA + PAGO
+                                            tabla = "OINV"; break;
+                                        case 179:     // NOTA DE CREDITO
+                                            tabla = "ORIN"; break;
+                                        case 65303:   // NOTA DE DEBITO
+                                            tabla = "OINV"; break;
+                                        case 60091:   // FACTURA DE RESERVA
+                                            tabla = "OINV"; break;
+                                        case 141:     // FACTURA DE PROVEEDORES
+                                            tabla = "OPCH"; break;
+                                    }
+                                    url += firmax;
+                                    string imprimePdf = "";
+                                    string impresora = "";
+                                    string numeroCopias = "";
+                                    string TipoDocFEL = "";
+
+                                    if (Utils.Company.DbServerType == SAPbobsCOM.BoDataServerTypes.dst_HANADB)
+                                    {
+                                        imprimePdf = Utils.TraeDatoH("SELECT \"U_IMPRIME_PDF\" FROM \"@FEL_RESOLUCION\" WHERE \"U_SERIE\" = " + CurrSerie);
+                                        impresora = Utils.TraeDatoH("SELECT \"U_IMPRESORA\" FROM \"@FEL_RESOLUCION\" WHERE \"U_SERIE\" = " + CurrSerie);
+                                        TipoDocFEL = Utils.TraeDatoH("SELECT \"U_TIPO_DOC\" FROM \"@FEL_RESOLUCION\" WHERE \"U_SERIE\" = " + CurrSerie);
+                                    }
+                                    else
+                                    {
+                                        imprimePdf = Utils.TraeDato("SELECT U_IMPRIME_PDF FROM [@FEL_RESOLUCION] WHERE U_SERIE = " + CurrSerie);
+                                        impresora = Utils.TraeDato("SELECT U_IMPRESORA FROM [@FEL_RESOLUCION] WHERE U_SERIE = " + CurrSerie);
+                                        TipoDocFEL = Utils.TraeDato("SELECT U_TIPO_DOC FROM [@FEL_RESOLUCION] WHERE U_SERIE = " + CurrSerie);
+                                    }
+
+                                    if (Utils.Company.DbServerType == BoDataServerTypes.dst_HANADB)
+                                    {
+                                        numeroCopias = Utils.TraeDatoH(@"select c.""U_NUMERO_COPIAS"" from ocrd c where ""CardCode"" = '" + cardCode + "'");
+                                    }
+                                    else
+                                    {
+                                        numeroCopias = Utils.TraeDato(@"select c.""U_NUMERO_COPIAS"" from ocrd c where ""CardCode"" = '" + cardCode + "'");
+                                    }
+
+                                    if (string.IsNullOrEmpty(firmax))
+                                    {
+                                        SBO_Application.MessageBox("Este documento no tiene informacion de FEEL");
+                                    }
+                                    else
+                                    {
+                                        if (Utils.FEL == Utils.TipoFEL.INFILE)
+                                        {
+                                            if (impresora != "" && imprimePdf != "" && numeroCopias != "")
+                                            {
+                                                if (imprimePdf == "1")
+                                                {
+                                                    try
+                                                    {
+                                                        string name = TipoDocFEL + "_" + CurrSerie + "_" + DocNum + ".pdf";
+                                                        string filenamepdfVal = dirXMLPDF + @"/" + name;
+
+                                                        string remoteUri = url;
+                                                        string myStringWebResource = null;
+                                                        // Create a new WebClient instance.
+                                                        WebClient myWebClient = new WebClient();
+                                                        // Concatenate the domain with the Web resource filename.
+                                                        myStringWebResource = remoteUri;
+
+                                                        // Download the Web resource and save it into the current filesystem folder.
+                                                        myWebClient.DownloadFile(myStringWebResource, filenamepdfVal);
+
+                                                        try
+                                                        {
+                                                            //IPrinter printer = new Printer();
+
+                                                            // Print the file
+                                                            int numero = Int32.Parse(numeroCopias);
+                                                            //for (int i = 0; i < numero; i++)
+                                                            //{
+                                                                //printer.PrintRawFile(impresora, filenamepdfVal, name);
+                                                            using (var document = PdfDocument.Load(filenamepdfVal))
+                                                            {
+                                                                // Crear un PrintDocument
+                                                                using (var printDocument = document.CreatePrintDocument())
+                                                                {
+                                                                    // Mostrar el cuadro de diálogo de impresión
+                                                                    printDocument.PrinterSettings.PrinterName = impresora;
+                                                                    printDocument.PrinterSettings.Copies = (short)numero;
+                                                                    printDocument.Print();
+                                                                    //using (var printDialog = new PrintDialog())
+                                                                    //{
+                                                                    //    printDialog.Document = printDocument;
+
+                                                                    //    // Si el usuario acepta, imprimir el documento
+                                                                    //    if (printDialog.ShowDialog() == DialogResult.OK)
+                                                                    //    {
+                                                                    //        printDocument.Print();
+                                                                    //    }
+                                                                    //}
+                                                                }
+                                                            }
+                                                            SBO_Application.SetStatusBarMessage("Documento enviado a impresora automáticamente....", SAPbouiCOM.BoMessageTime.bmt_Short, false);
+                                                            //}
+                                                        }
+                                                        catch (Exception ex)
+                                                        {
+                                                            SBO_Application.SetStatusBarMessage("Falla al intentar imprimir: " + ex.Message.ToString(), SAPbouiCOM.BoMessageTime.bmt_Short, true);
+                                                        }
+
+                                                    }
+                                                    catch (Exception ex)
+                                                    {
+                                                        SBO_Application.SetStatusBarMessage("Falla en proceso global de impresión: " + ex.Message.ToString(), SAPbouiCOM.BoMessageTime.bmt_Short, true);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        else
+                                        {
+                                            SBO_Application.MessageBox("Este documento no tiene informacion de FEEL");
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    
                                 }
                             }
                         }

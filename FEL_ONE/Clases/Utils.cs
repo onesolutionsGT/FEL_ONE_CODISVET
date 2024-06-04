@@ -395,7 +395,7 @@ namespace FEL_ONE.Clases
         }
 
         [Obsolete]
-        internal static void EnviaDocumento(SAPbobsCOM.Company OCompany, SAPbouiCOM.Application SBO_Application, string Tipo, string CurrSerie, string DocNum, string DocEntry, string CurrSerieName, string Pais, bool ProcesarBatch = false, string Linea = "")
+        internal static void EnviaDocumento(SAPbobsCOM.Company OCompany, string tabla, SAPbouiCOM.Application SBO_Application, string Tipo, string CurrSerie, string DocNum, string DocEntry, string CurrSerieName, string Pais, bool ProcesarBatch = false, string Linea = "")
         {
             ProcesarBatch = SerieEsBatch(OCompany, SBO_Application, CurrSerie);
             switch (Utils.FEL)
@@ -404,7 +404,7 @@ namespace FEL_ONE.Clases
                     Megaprint.EnviaDocumentoFEL(OCompany, SBO_Application, Tipo, CurrSerie, DocNum, CurrSerieName, DocEntry);
                     break;
                 case TipoFEL.INFILE:
-                    Infile.EnviaDocumentoFEL(OCompany, SBO_Application, Tipo, CurrSerie, DocNum, CurrSerieName, DocEntry);
+                    new Infile().EnviaDocumentoFEL(OCompany, tabla, SBO_Application, Tipo, CurrSerie, DocNum, CurrSerieName, DocEntry);
                     break;
                 case TipoFEL.G4S:
                     G4s.EnviaDocumentoFEL(OCompany, SBO_Application, Tipo, CurrSerie, DocNum, CurrSerieName, Pais, DocEntry, ProcesarBatch);

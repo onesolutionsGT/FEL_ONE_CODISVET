@@ -1,23 +1,28 @@
 ﻿using FEL_ONE.Clases;
 using FEL_ONE.Forms;
 using Newtonsoft.Json;
+using RawPrint;
 using SAPbobsCOM;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Printing;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
+using PdfiumViewer;
 
 namespace FEL_ONE.Certificadores
 {
     class Infile
     {
 
-        public static void EnviaDocumentoFEL(SAPbobsCOM.Company OCompany, SAPbouiCOM.Application SBO_Application, string Tipo, string CurrSerie, string DocNum, string CurrSerieName, string DocEntry, bool esBatch = false)
+        public  void EnviaDocumentoFEL(SAPbobsCOM.Company OCompany, string tabla, SAPbouiCOM.Application SBO_Application, string Tipo, string CurrSerie, string DocNum, string CurrSerieName, string DocEntry, bool esBatch = false)
         {
             string certificado = "";
             string passcertificad = "";
@@ -39,6 +44,9 @@ namespace FEL_ONE.Certificadores
             string xmlFile = "";
             string identificador = "";
             string filename;
+            string imprimePdf = "";
+            string impresora = "";
+            string numeroCopias = "";
             try
             {
                 if (Utils.ExisteDocumento(OCompany, SBO_Application, CurrSerie, DocEntry, Tipo, esBatch))
@@ -57,6 +65,7 @@ namespace FEL_ONE.Certificadores
                     Nit = Utils.ObtieneValorParametro(OCompany, SBO_Application, "NitEmi"); // Nit emisor para el token
                     email = Utils.ObtieneValorParametro(OCompany, SBO_Application, "Correo"); // Correo cliente
                     validar_FEL = Utils.ObtieneValorParametro(OCompany, SBO_Application, "VALFEL"); // Validacion de ID documetno FEL
+                    
 
                     string SerieAprobada;
                     string TipoDocFEL;
@@ -65,13 +74,44 @@ namespace FEL_ONE.Certificadores
                     {
                         SerieAprobada = Utils.TraeDatoH("SELECT \"U_SERIE\" FROM \"@FEL_RESOLUCION\" WHERE \"U_SERIE\" = " + CurrSerie);
                         TipoDocFEL = Utils.TraeDatoH("SELECT \"U_TIPO_DOC\" FROM \"@FEL_RESOLUCION\" WHERE \"U_SERIE\" = " + CurrSerie);
+                        imprimePdf = Utils.TraeDatoH("SELECT \"U_IMPRIME_PDF\" FROM \"@FEL_RESOLUCION\" WHERE \"U_SERIE\" = " + CurrSerie);
+                        impresora = Utils.TraeDatoH("SELECT \"U_IMPRESORA\" FROM \"@FEL_RESOLUCION\" WHERE \"U_SERIE\" = " + CurrSerie);
                         xmlResp = Utils.TraeDatoH("CALL FELONE_INFILE_" + TipoDocFEL + " (" + DocEntry + ",'" + TipoDocFEL + "')");
                     }
                     else
                     {
                         SerieAprobada = Utils.TraeDato("SELECT U_SERIE FROM [@FEL_RESOLUCION] WHERE U_SERIE = " + CurrSerie);
                         TipoDocFEL = Utils.TraeDato("SELECT U_TIPO_DOC FROM [@FEL_RESOLUCION] WHERE U_SERIE = " + CurrSerie);
+                        imprimePdf = Utils.TraeDato("SELECT U_IMPRIME_PDF FROM [@FEL_RESOLUCION] WHERE U_SERIE = " + CurrSerie);
+                        impresora = Utils.TraeDato("SELECT U_IMPRESORA FROM [@FEL_RESOLUCION] WHERE U_SERIE = " + CurrSerie);
                         xmlResp = Utils.TraeDato("EXEC FELONE_INFILE_" + TipoDocFEL + " " + DocEntry + ",'1'");
+                    }
+
+                    switch (TipoDocFEL)
+                    {
+                        case "FACT":     // FACTURA
+                            tabla = "OINV";  break;
+                        case "FACTA":   // FACTURA ANTICIPO
+                            tabla = "ODPI";  break;
+                        case "NCRE":     // NOTA DE CREDITO
+                            tabla = "ORIN";  break;
+                        case "NDEB":   // NOTA DE DEBITO
+                            tabla = "OINV";  break;
+                        case "FESP":     // FACTURA DE PROVEEDORES
+                            tabla = "OPCH";  break;
+                    }
+
+                    if (OCompany.DbServerType == BoDataServerTypes.dst_HANADB)
+                    {
+                        string cardCode = Utils.TraeDatoH(@"select c.""CardCode"" from " + tabla + @" c where ""DocEntry"" = '" + DocEntry + "'");
+
+                        numeroCopias = Utils.TraeDatoH(@"select c.""U_NUMERO_COPIAS"" from ocrd c where ""CardCode"" = '" + cardCode + "'");
+                    }
+                    else
+                    {
+                        string cardcode = Utils.TraeDato(@"select c.""CardCode"" from " + tabla + @" c where ""DocEntry"" = '" + DocEntry + "'");
+
+                        numeroCopias = Utils.TraeDato(@"select c.""U_NUMERO_COPIAS"" from ocrd c where ""CardCode"" = '" + cardcode + "'");
                     }
 
                     string rutasalidacertificado;
@@ -113,7 +153,6 @@ namespace FEL_ONE.Certificadores
                         var arrCert = JsonConvert.DeserializeObject<firma>(resCert.ToString());
                         string resultadojsonCert;
                         resultadojsonCert = arrCert.resultado.ToString();
-
 
                         if (resultadojsonCert == "true")
                         {
@@ -192,6 +231,73 @@ namespace FEL_ONE.Certificadores
                                         string data = res.ToString();
                                         filename = dirXMLres + "/Aprobada_" + TipoDocFEL + "_" + CurrSerieName + "_" + DocNum + ".json";
                                         Utils.GrabarArchivo(OCompany, Tipo, DocEntry, data, filename, "True", arr.uuid.ToString(), arr.numero.ToString(), arr.serie, dirUR_p + arr.uuid.ToString(), arr.fecha.ToString(), "", "", "");
+                                        //impresion automatica del pdf
+                                        if (impresora != "" && imprimePdf!="" && numeroCopias !="")
+
+                                        {
+                                            if(imprimePdf == "1")
+                                            {
+                                                try
+                                                {
+                                                    string name = TipoDocFEL + "_" + CurrSerieName + "_" + DocNum + ".pdf";
+                                                    string filenamepdfVal = dirXMLPDF + @"/" + name;
+
+                                                    string uuid = arr.uuid.ToString();
+                                                    string remoteUri = dirUR_p + uuid;
+                                                    string myStringWebResource = null;
+                                                    // Create a new WebClient instance.
+                                                    WebClient myWebClient = new WebClient();
+                                                    // Concatenate the domain with the Web resource filename.
+                                                    myStringWebResource = remoteUri;
+
+                                                    // Download the Web resource and save it into the current filesystem folder.
+                                                    myWebClient.DownloadFile(myStringWebResource, filenamepdfVal);
+
+                                                    try
+                                                    {
+                                                        //IPrinter printer = new Printer();
+
+                                                        // Print the file
+                                                        int numero = Int32.Parse(numeroCopias);
+                                                        //for (int i = 0; i < numero; i++)
+                                                        //{
+                                                        //printer.PrintRawFile(impresora, filenamepdfVal, name);
+                                                        using (var document = PdfDocument.Load(filenamepdfVal))
+                                                        {
+                                                            // Crear un PrintDocument
+                                                            using (var printDocument = document.CreatePrintDocument())
+                                                            {
+                                                                // Mostrar el cuadro de diálogo de impresión
+                                                                printDocument.PrinterSettings.PrinterName = impresora;
+                                                                printDocument.PrinterSettings.Copies = (short)numero;
+                                                                printDocument.Print();
+                                                                //using (var printDialog = new PrintDialog())
+                                                                //{
+                                                                //    printDialog.Document = printDocument;
+
+                                                                //    // Si el usuario acepta, imprimir el documento
+                                                                //    if (printDialog.ShowDialog() == DialogResult.OK)
+                                                                //    {
+                                                                //        printDocument.Print();
+                                                                //    }
+                                                                //}
+                                                            }
+                                                        }
+                                                        SBO_Application.SetStatusBarMessage("Documento enviado a impresora automáticamente....", SAPbouiCOM.BoMessageTime.bmt_Short, false);
+                                                        //}
+                                                    }
+                                                    catch (Exception ex)
+                                                    {
+                                                        SBO_Application.SetStatusBarMessage("Falla al intentar imprimir: " + ex.Message.ToString(), SAPbouiCOM.BoMessageTime.bmt_Short, true);
+                                                    }
+
+                                                }
+                                                catch (Exception ex)
+                                                {
+                                                    SBO_Application.SetStatusBarMessage("Falla en proceso global de impresión: " + ex.Message.ToString(), SAPbouiCOM.BoMessageTime.bmt_Short, true);
+                                                }
+                                            }
+                                        }
                                     }
                                     catch (Exception)
                                     {
