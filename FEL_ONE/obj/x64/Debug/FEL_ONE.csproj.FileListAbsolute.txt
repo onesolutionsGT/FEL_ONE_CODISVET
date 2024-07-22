@@ -254,6 +254,7 @@ C:\Proyectos\Implementacion\CODISVET\fuente\FEL_ONE_CODISVET\FEL_ONE\bin\x64\Deb
 C:\Proyectos\Implementacion\CODISVET\fuente\FEL_ONE_CODISVET\FEL_ONE\bin\x64\Debug\System.Numerics.Vectors.xml
 C:\Proyectos\Implementacion\CODISVET\fuente\FEL_ONE_CODISVET\FEL_ONE\bin\x64\Debug\System.Runtime.CompilerServices.Unsafe.xml
 C:\Proyectos\Implementacion\CODISVET\fuente\FEL_ONE_CODISVET\FEL_ONE\bin\x64\Debug\nl\PdfiumViewer.resources.dll
+C:\Proyectos\Implementacion\CODISVET\fuente\FEL_ONE_CODISVET\FEL_ONE\obj\x64\Debug\FEL_ONE.csproj.AssemblyReference.cache
 C:\Proyectos\Implementacion\CODISVET\fuente\FEL_ONE_CODISVET\FEL_ONE\obj\x64\Debug\Interop.SAPbobsCOM.dll
 C:\Proyectos\Implementacion\CODISVET\fuente\FEL_ONE_CODISVET\FEL_ONE\obj\x64\Debug\Interop.SAPbouiCOM.dll
 C:\Proyectos\Implementacion\CODISVET\fuente\FEL_ONE_CODISVET\FEL_ONE\obj\x64\Debug\FEL_ONE.csproj.ResolveComReference.cache

@@ -352,7 +352,7 @@ namespace FEL_ONE.Clases
 
                                 if (!string.IsNullOrEmpty(url))
                                 {
-                                    string firmax = oEditFirma.Value;
+                                    string firmax =oEditFirma.Value;
                                     String tabla = "";
                                     SAPbouiCOM.ComboBox Serie;
                                     Serie = (SAPbouiCOM.ComboBox)oFormLink.Items.Item("88").Specific;
@@ -408,9 +408,14 @@ namespace FEL_ONE.Clases
                                         numeroCopias = Utils.TraeDato(@"select c.""U_NUMERO_COPIAS"" from ocrd c where ""CardCode"" = '" + cardCode + "'");
                                     }
 
+                                    if (numeroCopias == "")
+                                    {
+                                        numeroCopias = "1";
+                                    }
+
                                     if (string.IsNullOrEmpty(firmax))
                                     {
-                                        SBO_Application.MessageBox("Este documento no tiene informacion de FEEL");
+                                        SBO_Application.MessageBox("Este documento no tiene informacion de Firma");
                                     }
                                     else
                                     {
@@ -432,47 +437,43 @@ namespace FEL_ONE.Clases
                                                         // Concatenate the domain with the Web resource filename.
                                                         myStringWebResource = remoteUri;
 
-                                                        // Download the Web resource and save it into the current filesystem folder.
+                                                        myWebClient.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3");
                                                         myWebClient.DownloadFile(myStringWebResource, filenamepdfVal);
 
                                                         try
                                                         {
-                                                            //IPrinter printer = new Printer();
-
-                                                            // Print the file
-                                                            int numero = Int32.Parse(numeroCopias);
-                                                            //for (int i = 0; i < numero; i++)
-                                                            //{
-                                                                //printer.PrintRawFile(impresora, filenamepdfVal, name);
-                                                            using (var document = PdfDocument.Load(filenamepdfVal))
+                                                            if (Utils.IsValidPDF(filenamepdfVal))
                                                             {
-                                                                // Crear un PrintDocument
-                                                                using (var printDocument = document.CreatePrintDocument())
-                                                                {
-                                                                    // Mostrar el cuadro de diálogo de impresión
-                                                                    printDocument.PrinterSettings.PrinterName = impresora;
-                                                                    printDocument.PrinterSettings.Copies = (short)numero;
-                                                                    printDocument.Print();
-                                                                    //using (var printDialog = new PrintDialog())
-                                                                    //{
-                                                                    //    printDialog.Document = printDocument;
+                                                                int numero = Int32.Parse(numeroCopias);
 
-                                                                    //    // Si el usuario acepta, imprimir el documento
-                                                                    //    if (printDialog.ShowDialog() == DialogResult.OK)
-                                                                    //    {
-                                                                    //        printDocument.Print();
-                                                                    //    }
-                                                                    //}
+                                                                using (var document = PdfDocument.Load(filenamepdfVal))
+                                                                {
+                                                                    using (var printDocument = document.CreatePrintDocument())
+                                                                    {
+                                                                        printDocument.PrinterSettings.PrinterName = impresora;
+                                                                        printDocument.PrinterSettings.Copies = (short)numero;
+                                                                        var valid = printDocument.PrinterSettings.IsValid;
+                                                                        if (valid)
+                                                                        {
+                                                                            printDocument.Print();
+                                                                            SBO_Application.SetStatusBarMessage("Documento enviado a impresora automáticamente....", SAPbouiCOM.BoMessageTime.bmt_Short, false);
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            SBO_Application.SetStatusBarMessage("La impresora no es válida para impresión automática....", SAPbouiCOM.BoMessageTime.bmt_Short, false);
+                                                                        }
+                                                                    }
                                                                 }
                                                             }
-                                                            SBO_Application.SetStatusBarMessage("Documento enviado a impresora automáticamente....", SAPbouiCOM.BoMessageTime.bmt_Short, false);
-                                                            //}
+                                                            else
+                                                            {
+                                                                SBO_Application.SetStatusBarMessage("El archivo descargado no es un PDF válido.", SAPbouiCOM.BoMessageTime.bmt_Short, true);
+                                                            }
                                                         }
                                                         catch (Exception ex)
                                                         {
                                                             SBO_Application.SetStatusBarMessage("Falla al intentar imprimir: " + ex.Message.ToString(), SAPbouiCOM.BoMessageTime.bmt_Short, true);
                                                         }
-
                                                     }
                                                     catch (Exception ex)
                                                     {
@@ -483,7 +484,7 @@ namespace FEL_ONE.Clases
                                         }
                                         else
                                         {
-                                            SBO_Application.MessageBox("Este documento no tiene informacion de FEEL");
+                                            SBO_Application.MessageBox("Para esta operacion debe tener activo el certificador INFILE.");
                                         }
                                     }
                                 }
@@ -496,6 +497,12 @@ namespace FEL_ONE.Clases
                         catch (Exception ex)
                         {
                             SBO_Application.MessageBox(ex.Message);
+                        }
+                        finally
+                        {
+                            // Asegurarse de que el archivo no esté bloqueado
+                            GC.Collect();
+                            GC.WaitForPendingFinalizers();
                         }
                     }
 
@@ -518,6 +525,8 @@ namespace FEL_ONE.Clases
             }
             catch { }
         }
+
+        
 
         public static void GoToSite(string url)
         {

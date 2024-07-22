@@ -2,6 +2,7 @@
 using System.Data;
 using System.Data.SqlClient;
 using System.IO;
+using System.Text;
 using System.Xml;
 using FEL_ONE.Certificadores;
 using SAPbobsCOM;
@@ -747,6 +748,29 @@ namespace FEL_ONE.Clases
             {
                 SBO_Application.MessageBox(ex.Message);
                 return result;
+            }
+        }
+
+        public static bool IsValidPDF(string filePath)
+        {
+            try
+            {
+                // Leer los primeros bytes del archivo
+                byte[] buffer = new byte[5];
+                using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+                {
+                    fs.Read(buffer, 0, buffer.Length);
+                }
+
+                // Convertir los bytes leídos a una cadena
+                string header = Encoding.ASCII.GetString(buffer);
+
+                // Verificar si la cadena contiene "%PDF-"
+                return header.StartsWith("%PDF-");
+            }
+            catch
+            {
+                return false;
             }
         }
         internal static string getCertificador()
